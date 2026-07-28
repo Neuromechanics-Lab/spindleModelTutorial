@@ -1,0 +1,19 @@
+# MATLAB
+*.asv
+*.m~
+*.mex*
+slprj/
+octave-workspace
+
+# macOS
+.DS_Store
+
+# Reference material (large; not part of the published tutorial)
+refs/
+*.mp4
+
+# Compiled standalone build outputs (per-OS binaries; host as a Release, not in-repo)
+build/SpindleTutorialLearn*/
+
+# MATLAB editor / temp
+*.autosave
