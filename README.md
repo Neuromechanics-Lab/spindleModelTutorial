@@ -181,10 +181,27 @@ the free Runtime at install time.
 ### Building for Windows
 
 The compiler emits a **native binary for whatever OS you build on** — there is no
-cross-compiling. To ship a Windows version you must run the same script *on a
-Windows machine* that has MATLAB + MATLAB Compiler:
+cross-compiling, and there is no separate "Windows version" of the source. To
+ship a Windows build you run the *same* script on a Windows machine.
 
-1. Clone this repo and `matlabMuscleSpindleModellingTools` side by side on Windows.
+On that machine you need MATLAB plus these three add-ons installed (Home →
+Add-Ons → **Get Add-Ons**). Being *licensed* is not enough — they must be
+installed, which `ver` will confirm:
+
+| Add-on | Why | Check |
+|--------|-----|-------|
+| **MATLAB Compiler** | produces the `.exe` | `exist('mcc')` → `2` |
+| **Signal Processing Toolbox** | `butter`/`filtfilt` inside `sarc2spindle` | `which butter` → non-empty |
+| **Optimization Toolbox** | only if you also compile the Toolkit window | `which fmincon` → non-empty |
+
+Signal Processing is a hard requirement for the Learn app: without it `mcc`
+still emits an executable, but one that dies at runtime on your users'
+machines. `buildLearnApp` now preflights this and refuses to build instead.
+
+Then:
+
+1. Clone this repo on Windows. Nothing else to install — the model code is
+   vendored (see [Vendored model code](#vendored-model-code)).
 2. In MATLAB: `cd build`, then `buildLearnApp`.
 3. Output lands in `build/SpindleTutorialLearn_win/` — a `SpindleTutorial.exe`
    plus a `SpindleTutorialInstaller` (the `.exe` your Windows users run).
@@ -197,7 +214,7 @@ the toolkit, and the tests all run unchanged on macOS and Windows — only the
 
 | Audience | What they need | How to distribute |
 |----------|----------------|-------------------|
-| **Has MATLAB** | The source | Link to the **git repo**; they clone it (next to the toolbox) and run `launchSpindleTutorial`. |
+| **Has MATLAB** | The source | Link to the **git repo**; they clone it and run `launchSpindleTutorial`. |
 | **No MATLAB** | The compiled app | They **download one installer** (per OS) + the free Runtime — no git clone, no MATLAB. |
 
 For a **website link**, the compiled installer is a large binary (~hundreds of

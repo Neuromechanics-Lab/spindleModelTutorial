@@ -189,7 +189,9 @@ classdef SpindleAppBase < handle
             % Shared palette + typography. Softened, slightly desaturated colors
             % on warm off-white canvases with white cards. bag = warm terracotta,
             % chain = soft steel blue (kept everywhere); muted navy for headings.
-            s.font      = 'Helvetica';
+            % Helvetica is not a real Windows font; MATLAB substitutes it and
+            % the result is noticeably heavier than the Mac rendering.
+            if ispc, s.font = 'Segoe UI'; else, s.font = 'Helvetica'; end
             s.bag       = [0.84 0.42 0.24];   % bag fiber / dynamic (soft terracotta)
             s.chain     = [0.24 0.52 0.72];   % chain fiber / static (soft blue)
             s.total     = [0.26 0.28 0.34];   % total / r (dark slate, not black)

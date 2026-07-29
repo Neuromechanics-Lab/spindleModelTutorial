@@ -30,6 +30,20 @@ root = fileparts(here);                     % repo root
 addpath(root);                               % so setupTutorialPaths is visible
 setupTutorialPaths();                        % put the toolbox on the path so deps trace
 
+% The Learn app filters fiber forces inside sarc2spindle, so Signal Processing
+% must be INSTALLED at build time. Without it mcc still produces an executable,
+% but one that dies at runtime on the user's machine - check up front instead.
+needed = {'butter', 'Signal Processing Toolbox'; ...
+          'filtfilt', 'Signal Processing Toolbox'};
+absent = needed(cellfun(@(f) isempty(which(f)), needed(:,1)), 2);
+if ~isempty(absent)
+    error('buildLearnApp:missingToolbox', ...
+        ['Cannot build: %s is licensed but not installed.\n', ...
+         'Install it via Home tab -> Add-Ons -> Get Add-Ons (sign in to your\n', ...
+         'MathWorks account), then re-run buildLearnApp.'], ...
+        strjoin(unique(absent), ', '));
+end
+
 entry   = fullfile(root, 'spindleLearnApp.m');
 dataMat = fullfile(root, 'data', 'ActCurveSim120240819.mat');
 figPng  = fullfile(root, 'data', 'spindleModelFig.png');
@@ -63,8 +77,12 @@ compiler.package.installer(results, ...
     'RuntimeDelivery', 'web', ...
     'OutputDir',       fullfile(outDir, 'installer'));
 
+if ispc,        appName = 'SpindleTutorial.exe';
+elseif ismac,   appName = 'SpindleTutorial.app';
+else,           appName = 'SpindleTutorial';
+end
 fprintf('\nDone. Artifacts:\n');
-fprintf('  standalone app : %s\n', fullfile(outDir, 'SpindleTutorial.app'));
+fprintf('  standalone app : %s\n', fullfile(outDir, appName));
 fprintf('  installer      : %s\n', fullfile(outDir, 'installer'));
 
 % ---- Equivalent one-liner using the older mcc interface -----------------
