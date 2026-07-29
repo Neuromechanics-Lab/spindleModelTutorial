@@ -14,6 +14,7 @@ refs/
 
 # Compiled standalone build outputs (per-OS binaries; host as a Release, not in-repo)
 build/SpindleTutorialLearn*/
+build/release-assets/
 
 # MATLAB editor / temp
 *.autosave

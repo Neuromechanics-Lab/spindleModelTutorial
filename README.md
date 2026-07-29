@@ -259,4 +259,5 @@ activation** (pCa 9 ≈ silent, pCa 4.5 ≈ maximal).
 
 ## License
 
-[Add license information]
+MIT — see [LICENSE](LICENSE). If you use this in published work, please cite the
+model papers above.
