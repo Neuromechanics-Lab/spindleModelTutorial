@@ -1,0 +1,11 @@
+Vendored dependency snapshot
+============================
+
+These files are COPIES, taken from their source repositories at the
+commits below. Do not edit them here - edit the source repo and re-run
+tools/refreshVendor.m.
+
+  matlabMuscleSpindleModellingTools : ba39645
+  gammaDriveOptimization            : 257a882
+
+Files: 14

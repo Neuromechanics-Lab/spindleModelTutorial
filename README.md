@@ -43,29 +43,36 @@ are driving the published model.
 
 ## Requirements
 
-- **MATLAB R2020a or later** (uses `uifigure` apps).
+**Just clone and run** — the model code this tutorial needs is included (see
+[Vendored model code](#vendored-model-code) below). You need:
+
+- **MATLAB R2020a or later** (uses `uifigure` apps). Runs on macOS and Windows.
 - **Signal Processing Toolbox** — `butter`/`filtfilt`, used inside `sarc2spindle`.
 - **Optimization Toolbox** — `fmincon`, used by the optimization tab.
-- The sibling **`matlabMuscleSpindleModellingTools`** toolbox on disk (required).
-- The sibling **`gammaDriveOptimization`** repo on disk — only for the
-  optimization tab, whose real B-spline routines it calls. Without it, the first
-  three tabs work fully and the optimization tab is disabled with a note.
 - *Optional:* **Parallel Computing Toolbox** — the optimization tab's "Use
   parallel" checkbox speeds the fit by parallelizing finite differences.
 
-## Folder layout
+## Vendored model code
 
-Clone this repo next to the toolbox and the optimization repo (the tutorial finds
-them automatically):
+This repository is **self-sufficient**: the muscle spindle model files it depends
+on are vendored under [`vendor/`](vendor/) — 12 files from
+`matlabMuscleSpindleModellingTools` (the model itself) and 2 from
+`gammaDriveOptimization` (the B-spline γ routines used by the optimization tab).
+They are **copies**, snapshotted at the commits recorded in
+`vendor/VENDOR_INFO.txt`.
+
+If you also have the **source repositories** checked out as siblings, they are
+used automatically in preference to the vendored copies — so your edits there
+take effect immediately:
 
 ```
-GitHub/Emory/                          (or any parent folder)
-├── matlabMuscleSpindleModellingTools/   <- the model (required)
-├── gammaDriveOptimization/              <- needed only for the optimization tab
-└── spindleModelTutorial/                <- this repo
+<parent>/
+├── matlabMuscleSpindleModellingTools/   <- used if present
+├── gammaDriveOptimization/              <- used if present
+└── spindleModelTutorial/                <- this repo (falls back to vendor/)
 ```
 
-If they live elsewhere, set environment variables before launching:
+Point elsewhere with environment variables if needed:
 
 ```matlab
 % macOS / Linux
@@ -76,6 +83,10 @@ setenv('GAMMA_OPT_DIR',       '/full/path/to/gammaDriveOptimization');
 setenv('SPINDLE_TOOLBOX_DIR', 'C:\path\to\matlabMuscleSpindleModellingTools');
 setenv('GAMMA_OPT_DIR',       'C:\path\to\gammaDriveOptimization');
 ```
+
+**Maintainers:** after changing the source repos, re-sync the copies with
+`cd tools; refreshVendor` — it re-copies the file list and re-stamps
+`vendor/VENDOR_INFO.txt` with the new commit hashes.
 
 ## Launch
 
@@ -227,7 +238,14 @@ spindleModelTutorial/
 │   ├── runOptFromData.m          user length + firing -> inferred gamma drive
 │   └── exampleUserData.m         built-in demo dataset in the user-data format
 ├── data/
-│   └── ActCurveSim120240819.mat  vendored pCa<->activation curve (self-contained)
+│   ├── ActCurveSim120240819.mat  vendored pCa<->activation curve (self-contained)
+│   └── spindleModelFig.png       model schematic shown on the Overview tab
+├── vendor/                   snapshotted model code (see Vendored model code)
+│   ├── VENDOR_INFO.txt           source commits the copies were taken from
+│   ├── matlabMuscleSpindleModellingTools/   12 files: the model
+│   └── gammaDriveOptimization/               2 files: B-spline gamma routines
+├── tools/
+│   └── refreshVendor.m       re-sync vendor/ from the source repos
 ├── docs/                     standalone narrative (mirrors the in-app text)
 └── tests/
     └── smokeTest.m           headless checks for the compute layer

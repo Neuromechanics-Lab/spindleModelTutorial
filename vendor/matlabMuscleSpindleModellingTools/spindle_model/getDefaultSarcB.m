@@ -1,0 +1,19 @@
+function sarcB = getDefaultSarcB()
+sarcE                    = getDefaultSarcE();
+sarcB.pCa               = [];
+sarcB.act               = [];
+sarcB.f                 = 600;%1000;%600
+sarcB.g                 = 40;%40;%7
+sarcB.power_stroke      = 2.5;
+sarcB.hs_length         = sarcE.hs_length;
+sarcB.cmd_length        = sarcE.hs_length;
+sarcB.hsl_slack         = 1050;
+sarcB.k_passive         = 90;
+sarcB.compliance_factor = 0.5;
+sarcB.checkSlack        = 1;
+sarcB.isActin           = 1;
+sarcB.act_phaseShift_s  = 0;
+sarcB.act_freq          = 1.5;
+% sarcB.initial_pCa = 8;
+% sarcB.activating_pCa = 7.4;
+end

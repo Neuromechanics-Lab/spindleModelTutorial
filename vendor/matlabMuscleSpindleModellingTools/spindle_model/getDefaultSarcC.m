@@ -1,0 +1,20 @@
+function sarcC = getDefaultSarcC()
+sarcE = getDefaultSarcE();
+sarcC.pCa               = [];
+sarcC.act               = [];
+sarcC.f                 = 400;
+sarcC.g                 = 300;
+sarcC.power_stroke      = 2.5;
+sarcC.hs_length         = sarcE.hs_length;
+sarcC.cmd_length        = sarcE.hs_length;
+sarcC.hsl_slack         = 1200;
+sarcC.k_passive         = 250;
+sarcC.compliance_factor = 0.5;
+sarcC.checkSlack        = 1;
+sarcC.isActin           = 1;
+sarcC.act_freq          = 1.5;
+% sarcC.act_phaseShift_s = sarcE.act_phaseShift_s;
+% sarcC.initial_pCa = 5.55;
+% sarcC.activating_pCa = 4.55;
+% sarcC.pCa_amplitude     = (sarcC.activating_pCa-sarcC.initial_pCa);
+end
