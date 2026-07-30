@@ -18,3 +18,8 @@ build/release-assets/
 
 # MATLAB editor / temp
 *.autosave
+
+# Prebuilt installers (attach to a GitHub Release; do NOT commit - binaries
+# stay in git history permanently and bloat every future clone)
+dist/
+*.zip

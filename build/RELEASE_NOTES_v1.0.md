@@ -5,18 +5,26 @@ Interactive companion to the biophysical muscle spindle model of
 
 ## Downloads — no MATLAB needed
 
-| File | For |
-|------|-----|
-| `SpindleTutorialInstaller_mac.zip` | macOS |
-| `SpindleTutorialInstaller_win.zip` | Windows |
+| File | Platform | Runtime it fetches |
+|------|----------|--------------------|
+| `SpindleTutorialInstaller_mac.zip` | macOS | MATLAB Runtime **R2022b** |
+| `SpindleTutorialInstaller_win.zip` | Windows 10/11 (64-bit) | MATLAB Runtime **R2026a** |
 
-Each installer sets up the **Interactive Tutorial** app and the free **MATLAB
-Runtime** (downloaded during install — you need internet once). No MATLAB
-license required.
+Unzip, run the installer, and launch **Spindle Tutorial**. No MATLAB license
+required.
 
-**macOS note:** the app is unsigned, so the first time you open it, macOS will
-warn about an unidentified developer. **Right-click the app → Open** → *Open*.
-You only need to do this once.
+**These are *web* installers** — small, because they download the free MATLAB
+Runtime from MathWorks during installation. So you need an internet connection
+while installing, and it takes a while (the Runtime is several GB). Once
+installed, the app runs offline. The Runtime version is pinned per build, which
+is why the two platforms list different versions.
+
+**First launch — the app is not code-signed:**
+
+- **macOS:** you'll see an "unidentified developer" warning. **Right-click the
+  app → Open** → *Open*. Once only.
+- **Windows:** SmartScreen may say the publisher is unrecognized. Choose
+  **More info → Run anyway**.
 
 ## What's in the app
 

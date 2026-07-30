@@ -217,6 +217,25 @@ the toolkit, and the tests all run unchanged on macOS and Windows — only the
 | **Has MATLAB** | The source | Link to the **git repo**; they clone it and run `launchSpindleTutorial`. |
 | **No MATLAB** | The compiled app | They **download one installer** (per OS) + the free Runtime — no git clone, no MATLAB. |
 
+Prebuilt installers for **macOS** and **Windows** are attached to the
+[latest release](../../releases/latest) — not committed to this repository. Both
+are *web* installers: small, because they fetch the free MATLAB Runtime during
+installation (so you need internet once; the Runtime version is pinned per
+build). Neither is code-signed, so on first launch use **right-click → Open**
+(macOS) or **More info → Run anyway** (Windows).
+
+A prebuilt **Windows** installer is currently committed under [`dist/`](dist/) —
+`dist/SpindleTutorialInstaller_win.zip` (1.8 MB). It is a *web* installer and
+needs an internet connection to fetch the free MATLAB Runtime R2026a while it
+installs; see [`dist/README.md`](dist/README.md) for install steps and
+provenance. macOS builds are not committed; produce one with `buildLearnApp` on
+a Mac.
+
+> **Do not commit installers.** Binaries stay in git history permanently and
+> bloat every future clone. `.gitignore` excludes `dist/`, `*.zip`, and
+> `build/SpindleTutorialLearn*/` for exactly this reason — attach build outputs
+> to a Release instead.
+
 For a **website link**, the compiled installer is a large binary (~hundreds of
 MB with the Runtime), so host the built file as a download rather than in the
 repo itself: a **GitHub Release** asset (you can link straight to it), **Zenodo**
