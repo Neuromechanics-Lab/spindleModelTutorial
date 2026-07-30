@@ -38,8 +38,26 @@ is why the two platforms list different versions.
 
 ## For MATLAB users
 
-Clone the source instead and run `launchSpindleTutorial`. See the
-[README](../README.md) for the required sibling repositories.
+If you have MATLAB you don't need the installers above — run it from source and
+you also get the **Analysis Toolkit** (model fitting), which the standalone app
+does not include. Either clone the repository:
+
+```bash
+git clone https://github.com/SurabhiSimha/spindleModelTutorial.git
+cd spindleModelTutorial
+```
+
+…or download **Source code (zip)** at the bottom of this release and unzip it.
+Then, in MATLAB:
+
+```matlab
+launchSpindleTutorial     % pick Interactive Tutorial (Learn) or Analysis Toolkit (Apply)
+```
+
+**Nothing else to install** — the muscle spindle model code is included under
+`vendor/`. You need MATLAB R2020a or later with the **Signal Processing** and
+**Optimization** Toolboxes. Details in the
+[README](https://github.com/SurabhiSimha/spindleModelTutorial#readme).
 
 ## Citation
 

@@ -1,12 +1,14 @@
 # Muscle Spindle Model — Interactive Tutorial
 
 An interactive, tutorial-style MATLAB app for the biophysical muscle spindle
-model in [`matlabMuscleSpindleModellingTools`](../matlabMuscleSpindleModellingTools).
-It lets you *play* with the model — move a parameter and immediately see how
+model of [Simha et al. (2026)](https://doi.org/10.64898/2026.07.03.736206). It
+lets you *play* with the model — move a parameter and immediately see how
 individual fiber forces, the Ia receptor potential, and the cross-bridge
 distribution respond — and it walks you through how the model is put together
-and how the fusimotor-drive optimization (from
-[`gammaDriveOptimization`](../gammaDriveOptimization)) works.
+and how fusimotor (γ) drive is inferred by fitting the model to data.
+
+**No MATLAB?** Download a prebuilt app for macOS or Windows from the
+[latest release](../../releases/latest).
 
 **Author:** Surabhi Simha · Neuromechanics Lab, Emory University
 
@@ -223,13 +225,6 @@ are *web* installers: small, because they fetch the free MATLAB Runtime during
 installation (so you need internet once; the Runtime version is pinned per
 build). Neither is code-signed, so on first launch use **right-click → Open**
 (macOS) or **More info → Run anyway** (Windows).
-
-A prebuilt **Windows** installer is currently committed under [`dist/`](dist/) —
-`dist/SpindleTutorialInstaller_win.zip` (1.8 MB). It is a *web* installer and
-needs an internet connection to fetch the free MATLAB Runtime R2026a while it
-installs; see [`dist/README.md`](dist/README.md) for install steps and
-provenance. macOS builds are not committed; produce one with `buildLearnApp` on
-a Mac.
 
 > **Do not commit installers.** Binaries stay in git history permanently and
 > bloat every future clone. `.gitignore` excludes `dist/`, `*.zip`, and
