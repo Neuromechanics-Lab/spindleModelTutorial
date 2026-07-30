@@ -18,12 +18,19 @@ function d = loadUserData(filePath)
 %   fields). All time-series must be the same length as `t`.
 %
 %     t              [1xN] time in seconds. Use a (near-)uniform step; dt ~= 1 ms
-%                    is recommended (the model runs at ~1 kHz).
-%     mtuLength      [1xN] muscle-tendon unit length in nm.        (see note)
+%                    is expected - the model is tuned for it and is NOT
+%                    dt-invariant (spike intervals quantise to dt).
+%     mtuLength      [1xN] muscle-tendon unit length.              (see note)
 %       -- or --
-%     fascicleLength [1xN] muscle fascicle length in nm.           (see note)
+%     fascicleLength [1xN] muscle fascicle length.                 (see note)
+%     restingLength  scalar resting/reference length, IN THE SAME UNITS as the
+%                    length trace above. Give this and you can supply length in
+%                    mm, cm, m - anything - because the ratio is what matters;
+%                    the units cancel. Omit it only if your trace is already in
+%                    half-sarcomere nm (resting ~1250 nm).       [recommended]
 %
-%     alphaAct       [1xN] extrafusal (alpha) activation, 0..1 or 0..100 %.  [optional]
+%     alphaAct       [1xN] extrafusal (alpha) activation, 0..1 or 0..100 %.
+%                    Omitted = 0, i.e. a passive (unactivated) muscle. [optional]
 %     chainAct       [1xN] gamma-static (chain) activation, 0..1 or 0..100 %. [forward]
 %     bagAct         [1xN] gamma-dynamic (bag) activation, 0..1 or 0..100 %.  [forward]
 %     targetFiring   [1xN] Ia firing rate to fit (spikes/s).                  [optimize]
@@ -80,20 +87,52 @@ end
 d.t = t; d.dt = dt; d.n = n;
 
 % -- length -------------------------------------------------------------
+% The model works in half-sarcomere nanometres (resting ~1250 nm), which is not
+% how anyone records data. So: if you also give `restingLength` IN THE SAME
+% UNITS as your length trace, we normalise (length / restingLength) and scale to
+% the model's resting length. The units then CANCEL - mm, cm, m, volts-from-a-
+% sonomicrometer, anything - as long as both are in the same units.
+% Without `restingLength`, the trace is taken to be absolute half-sarcomere nm.
 hasM = isfield(S, 'mtuLength') && ~isempty(S.mtuLength);
 hasF = isfield(S, 'fascicleLength') && ~isempty(S.fascicleLength);
 if ~hasM && ~hasF
     error('loadUserData:length', ...
-        'The file must contain `mtuLength` or `fascicleLength` (nm), same length as t.');
+        ['The file must contain `mtuLength` or `fascicleLength`, same length as t.\n', ...
+         'Give it in half-sarcomere nm, or in any units together with `restingLength`.']);
 end
 if hasF
-    d.fascicleLength = checkLen(S.fascicleLength, n, 'fascicleLength');
-    d.hasFascicle = true;
-    d.mtuLength = [];
+    raw = checkLen(S.fascicleLength, n, 'fascicleLength');
 else
-    d.mtuLength = checkLen(S.mtuLength, n, 'mtuLength');
-    d.hasFascicle = false;
-    d.fascicleLength = [];
+    raw = checkLen(S.mtuLength, n, 'mtuLength');
+end
+
+L0model = 1250;   % model resting half-sarcomere length (nm), see defaultTutorialParams
+if isfield(S, 'restingLength') && ~isempty(S.restingLength)
+    L0user = double(S.restingLength);
+    if ~isscalar(L0user) || ~isfinite(L0user) || L0user <= 0
+        error('loadUserData:restingLength', ...
+            '`restingLength` must be a positive scalar, in the same units as your length trace.');
+    end
+    raw = (raw / L0user) * L0model;      % dimensionless ratio -> model nm
+    d.restingLength = L0user;
+    d.lengthWasNormalised = true;
+else
+    % Absolute nm expected. A trace far from ~1250 nm is almost certainly in the
+    % wrong units, so say so rather than silently producing nonsense.
+    if median(raw) < 200 || median(raw) > 6000
+        warning('loadUserData:lengthScale', ...
+            ['Length has median %.4g, but the model expects half-sarcomere nm\n', ...
+             '(resting ~%d nm). If your data is in mm/cm/etc, add `restingLength`\n', ...
+             'in those same units and it will be normalised for you.'], median(raw), L0model);
+    end
+    d.restingLength = [];
+    d.lengthWasNormalised = false;
+end
+
+if hasF
+    d.fascicleLength = raw; d.hasFascicle = true;  d.mtuLength = [];
+else
+    d.mtuLength = raw;      d.hasFascicle = false; d.fascicleLength = [];
 end
 
 % -- activations (normalize to 0..1) -----------------------------------

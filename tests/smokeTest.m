@@ -96,6 +96,28 @@ nfail = nfail + check('forward-from-data produces finite firing-ready output', .
 nfail = nfail + check('forward-from-data activation traces are in [0,1]', ...
     all(uo.actB >= -1e-9 & uo.actB <= 1+1e-9));
 
+% ---- 8. User data in non-nm units (restingLength normalisation) -------
+tu = 0:0.001:1.0;
+mm = struct('t', tu, 'mtuLength', 30 + 2.4*max(0, min(1,(tu-0.3)/0.5)), ...
+            'restingLength', 30, 'alphaAct', 35*ones(size(tu)), ...
+            'chainAct', 50*ones(size(tu)), 'bagAct', 90*(tu>0.3));
+fmm = fullfile(tempdir, 'smoke_mm.mat'); save(fmm, '-struct', 'mm');
+dmm = loadUserData(fmm);
+nfail = nfail + check('mm length + restingLength is normalised to model nm', ...
+    dmm.lengthWasNormalised && abs(median(dmm.mtuLength) - 1250) < 200);
+omm = runForwardFromData(dmm);
+nfail = nfail + check('forward run works from mm-scaled input', all(isfinite(omm.r)));
+
+% ---- 9. Saving results -------------------------------------------------
+sbase = fullfile(tempdir, 'smoke_save');
+fs = saveUserResults(sbase, omm, 'forward');
+nfail = nfail + check('saveUserResults writes a .mat and a .csv', ...
+    numel(fs) == 2 && isfile(fs{1}) && isfile(fs{2}));
+chk = load(fs{1});
+nfail = nfail + check('saved .mat carries the key signals', ...
+    isfield(chk,'t') && isfield(chk,'IFR') && isfield(chk,'forceBag'));
+delete(fs{1}); delete(fs{2}); delete(fmm);
+
 % ---- Summary ----------------------------------------------------------
 if nfail == 0
     fprintf('\nALL CHECKS PASSED.\n\n');

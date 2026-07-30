@@ -24,8 +24,11 @@ classdef SpindleToolkitApp < SpindleAppBase
         udStatus
         udFwdBtn
         udOptBtn
+        udSaveBtn
         udPlotPanel
         udResAx     = [];          % persistent result axes (5; optimize uses 3)
+        udLastRes   = [];          % last run's results (for Save)
+        udLastKind  = '';          % 'forward' | 'optimize'
     end
 
     properties (Access = private)
@@ -228,8 +231,8 @@ classdef SpindleToolkitApp < SpindleAppBase
 
             % Left: instructions + controls
             cpanel = obj.card(g, 'Bring your own inputs'); cpanel.Layout.Column = 1;
-            cg = uigridlayout(cpanel, [8 1]);
-            cg.RowHeight = {'fit','fit','fit','fit','fit','fit','fit','1x'};
+            cg = uigridlayout(cpanel, [9 1]);
+            cg.RowHeight = {'fit','fit','fit','fit','fit','fit','fit','fit','1x'};
             cg.Padding = [12 12 12 12]; cg.RowSpacing = 8; cg.BackgroundColor = s.card;
 
             h = uihtml(cg); h.HTMLSource = obj.userDataHTML();  h.Layout.Row = 1;
@@ -256,8 +259,14 @@ classdef SpindleToolkitApp < SpindleAppBase
                 'ButtonPushedFcn', @(src,e) obj.runUserOptimize());
             obj.udOptBtn.Layout.Row = 6;
 
+            obj.udSaveBtn = uibutton(cg, 'Text', 'Save results...', ...
+                'Enable', 'off', 'BackgroundColor', [0.93 0.94 0.96], 'FontColor', s.navy, ...
+                'ButtonPushedFcn', @(src,e) obj.saveUserRun());
+            obj.udSaveBtn.Layout.Row = 7;
+            obj.udSaveBtn.Tooltip = 'Write the last run to a .mat (everything) and a .csv (time series)';
+
             obj.udStatus = uilabel(cg, 'Text', 'Ready.', 'WordWrap', 'on', 'FontColor', s.muted);
-            obj.udStatus.Layout.Row = 7;
+            obj.udStatus.Layout.Row = 8;
 
             % Right: results. Build the 5 result axes ONCE (persistent, always
             % visible) - the same pattern the Gamma-optimization tab uses. Freshly
@@ -321,7 +330,9 @@ classdef SpindleToolkitApp < SpindleAppBase
             try
                 out = runForwardFromData(obj.udData);
                 obj.renderUserForward(out);
-                obj.udStatus.Text = 'Forward run complete.';
+                obj.udLastRes = out; obj.udLastKind = 'forward';
+                obj.setEnable(obj.udSaveBtn, true);
+                obj.udStatus.Text = 'Forward run complete. "Save results..." to export.';
             catch ME
                 obj.udStatus.Text = ['Error: ' ME.message];
             end
@@ -367,7 +378,10 @@ classdef SpindleToolkitApp < SpindleAppBase
                 res = runOptFromData(obj.udData, struct('maxIter', 20, ...
                     'iterFcn', @(info) obj.onUserOptIter(info)));
                 obj.renderUserOptimize(res);
-                obj.udStatus.Text = sprintf('Optimize complete. Cost %.3g -> %.3g.', res.fval0, res.fvalOpt);
+                obj.udLastRes = res; obj.udLastKind = 'optimize';
+                obj.setEnable(obj.udSaveBtn, true);
+                obj.udStatus.Text = sprintf(['Optimize complete. Cost %.3g -> %.3g. ' ...
+                    '"Save results..." to export.'], res.fval0, res.fvalOpt);
             catch ME
                 obj.udStatus.Text = ['Error: ' ME.message];
             end
@@ -413,6 +427,30 @@ classdef SpindleToolkitApp < SpindleAppBase
             ylabel(axCost, 'RMSE (spikes/s)'); grid(axCost, 'on');
 
             obj.beautify(obj.udPlotPanel);
+        end
+
+        function saveUserRun(obj)
+            % Export the last Your-data run: a .mat with everything and a .csv
+            % of the time series.
+            if isempty(obj.udLastRes)
+                obj.udStatus.Text = 'Nothing to save yet - run forward or optimize first.';
+                return
+            end
+            defName = sprintf('spindleResults_%s', obj.udLastKind);
+            [f, pth] = uiputfile({'*.mat','Results (.mat + .csv)'}, ...
+                'Save results as', defName);
+            if isequal(f, 0), return; end
+            obj.setBusy(true);
+            try
+                [~, stem] = fileparts(f);
+                files = saveUserResults(fullfile(pth, stem), obj.udLastRes, obj.udLastKind);
+                [~, n1, e1] = fileparts(files{1});
+                [~, n2, e2] = fileparts(files{2});
+                obj.udStatus.Text = sprintf('Saved %s%s and %s%s to %s', n1, e1, n2, e2, pth);
+            catch ME
+                obj.udStatus.Text = ['Could not save: ' ME.message];
+            end
+            obj.setBusy(false);
         end
 
         function onUserOptIter(obj, info)

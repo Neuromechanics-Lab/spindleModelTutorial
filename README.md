@@ -86,9 +86,10 @@ setenv('SPINDLE_TOOLBOX_DIR', 'C:\path\to\matlabMuscleSpindleModellingTools');
 setenv('GAMMA_OPT_DIR',       'C:\path\to\gammaDriveOptimization');
 ```
 
-**Maintainers:** after changing the source repos, re-sync the copies with
-`cd tools; refreshVendor` — it re-copies the file list and re-stamps
-`vendor/VENDOR_INFO.txt` with the new commit hashes.
+Re-syncing those copies is a maintainer task — see
+[MAINTAINING.md](MAINTAINING.md).
+
+---
 
 ## Launch
 
@@ -109,26 +110,6 @@ Start on the **Overview** tab, work through the **Guided walkthrough**, then
 experiment in the **Playground**. When you want to fit the model to data, open the
 **Analysis Toolkit** window.
 
-## Verify the engine (headless)
-
-The numerical core can be checked without opening the GUI:
-
-```matlab
-setupTutorialPaths();
-smokeTest
-```
-
-or from a shell:
-
-```bash
-matlab -batch "run('tests/smokeTest.m')"
-```
-
-This runs the forward simulation and the optimization demo and prints
-PASS/FAIL for each sanity check.
-
----
-
 ## Bring your own data (`Your data` tab)
 
 The **Your data** tab runs the model on inputs you supply in a `.mat` file. Save
@@ -137,9 +118,10 @@ time-series the **same length as `t`**:
 
 | Variable | Meaning | Needed for |
 |----------|---------|-----------|
-| `t` | time (s), ~1 ms uniform step | always |
-| `mtuLength` *or* `fascicleLength` | length in nm (MTU is run through the tendon; fascicle is used as-is) | always |
-| `alphaAct` | extrafusal (α) activation, `0..1` or `0..100` % | optional |
+| `t` | time (s), uniform step — **use ~1 ms** (see below) | always |
+| `mtuLength` *or* `fascicleLength` | muscle length, **any units** (MTU is run through the tendon; fascicle is used as-is) | always |
+| `restingLength` | scalar resting length **in the same units** as your length trace | recommended |
+| `alphaAct` | extrafusal (α) activation, `0..1` or `0..100` % — **omitted = 0**, a passive muscle | optional |
 | `chainAct`, `bagAct` | γ-static / γ-dynamic activations | **forward** run |
 | `targetFiring` | recorded Ia firing rate (spikes/s) | **optimize** run |
 | `tendonStiffness` | scalar (default 5000) | optional |
@@ -152,94 +134,36 @@ time-series the **same length as `t`**:
   protocols, rather than the periodic B-spline used for gait data on the
   `Gamma optimization` tab.
 
+**Units — give `restingLength` and yours cancel.** Internally the model works in
+half-sarcomere nanometres (resting ≈ 1250 nm), which is nobody's recording unit.
+So supply your length in **mm, cm, m — whatever you have** — plus `restingLength`
+in those same units, and the loader normalises by the ratio. Omit `restingLength`
+only if your trace really is in half-sarcomere nm (you'll get a warning if it
+looks like it isn't).
+
+**Time step matters.** The model is tuned for **dt = 1 ms** and is *not*
+dt-invariant: the integrate-and-fire stage quantises spike intervals to dt, so
+firing rates shift if you change it. The loader warns outside ~0.2–2 ms — resample
+to 1 kHz if you can.
+
 Activations may be fractions (`0..1`) or percent (`0..100`); values above ~1.5
 are treated as percent. Click **Load built-in example** to see a valid dataset
 and try both actions without a file.
 
----
+**Saving.** After a run, **Save results…** writes a `.mat` (everything) and a
+`.csv` (the time series, for Excel/Python/R).
 
-## Shipping a standalone app (no MATLAB license needed)
-
-The **Interactive Tutorial (Learn)** window can be compiled into a
-double-clickable desktop app that runs against the free **MATLAB Runtime** — so
-readers/reviewers without a MATLAB license can use it.
-
-**One-time setup:** install the **MATLAB Compiler** add-on (Home → Add-Ons →
-*MATLAB Compiler*). Check with `exist('mcc')` → should be `2`.
-
-**Build** (do this once per operating system — the output is platform-specific;
-build on macOS → Mac app, on Windows → `.exe`):
-
-```matlab
-cd build
-buildLearnApp        % -> build/SpindleTutorialLearn_mac/  (or _win on Windows)
-```
-
-`spindleLearnApp.m` is the entry point (opens the Learn window and keeps it
-alive); the activation-curve `.mat`, the overview figure, and the model functions
-are bundled automatically. The script also packages an **installer** that fetches
-the free Runtime at install time.
-
-### Building for Windows
-
-The compiler emits a **native binary for whatever OS you build on** — there is no
-cross-compiling, and there is no separate "Windows version" of the source. To
-ship a Windows build you run the *same* script on a Windows machine.
-
-On that machine you need MATLAB plus these three add-ons installed (Home →
-Add-Ons → **Get Add-Ons**). Being *licensed* is not enough — they must be
-installed, which `ver` will confirm:
-
-| Add-on | Why | Check |
-|--------|-----|-------|
-| **MATLAB Compiler** | produces the `.exe` | `exist('mcc')` → `2` |
-| **Signal Processing Toolbox** | `butter`/`filtfilt` inside `sarc2spindle` | `which butter` → non-empty |
-| **Optimization Toolbox** | only if you also compile the Toolkit window | `which fmincon` → non-empty |
-
-Signal Processing is a hard requirement for the Learn app: without it `mcc`
-still emits an executable, but one that dies at runtime on your users'
-machines. `buildLearnApp` now preflights this and refuses to build instead.
-
-Then:
-
-1. Clone this repo on Windows. Nothing else to install — the model code is
-   vendored (see [Vendored model code](#vendored-model-code)).
-2. In MATLAB: `cd build`, then `buildLearnApp`.
-3. Output lands in `build/SpindleTutorialLearn_win/` — a `SpindleTutorial.exe`
-   plus a `SpindleTutorialInstaller` (the `.exe` your Windows users run).
-
-The MATLAB source itself is OS-agnostic (all paths use `fullfile`), so the app,
-the toolkit, and the tests all run unchanged on macOS and Windows — only the
-*compiled* artifact is platform-specific.
-
-### How people get it
-
-| Audience | What they need | How to distribute |
-|----------|----------------|-------------------|
-| **Has MATLAB** | The source | Link to the **git repo**; they clone it and run `launchSpindleTutorial`. |
-| **No MATLAB** | The compiled app | They **download one installer** (per OS) + the free Runtime — no git clone, no MATLAB. |
-
-Prebuilt installers for **macOS** and **Windows** are attached to the
-[latest release](../../releases/latest) — not committed to this repository. Both
-are *web* installers: small, because they fetch the free MATLAB Runtime during
-installation (so you need internet once; the Runtime version is pinned per
-build). Neither is code-signed, so on first launch use **right-click → Open**
-(macOS) or **More info → Run anyway** (Windows).
-
-> **Do not commit installers.** Binaries stay in git history permanently and
-> bloat every future clone. `.gitignore` excludes `dist/`, `*.zip`, and
-> `build/SpindleTutorialLearn*/` for exactly this reason — attach build outputs
-> to a Release instead.
-
-For a **website link**, the compiled installer is a large binary (~hundreds of
-MB with the Runtime), so host the built file as a download rather than in the
-repo itself: a **GitHub Release** asset (you can link straight to it), **Zenodo**
-(gives a citable DOI — handy for the manuscript), or your own server. A plain git
-link is right for the *source*, but for the click-to-run app link the *installer
-download*. (A truly install-free "runs in the browser" link is a different,
-heavier route — a hosted MATLAB Web App Server — not what compilation produces.)
+**Prefer scripting?** [`examples/runMyOwnData.m`](examples/runMyOwnData.m) is an
+editable template that does all of the above from code — build inputs, run
+forward or optimize, plot, and save. Run it as-is to see the whole flow, then
+swap in your own recording.
 
 ---
+
+## Building the standalone apps
+
+Prebuilt installers are on the [latest release](../../releases/latest). If you
+need to *build* them yourself, see [MAINTAINING.md](MAINTAINING.md).
 
 ## How it's organized
 
@@ -267,7 +191,10 @@ spindleModelTutorial/
 │   ├── loadUserData.m            load + validate a user .mat (Your data tab)
 │   ├── runForwardFromData.m      user length + activations -> firing
 │   ├── runOptFromData.m          user length + firing -> inferred gamma drive
+│   ├── saveUserResults.m         export a run to .mat + .csv
 │   └── exampleUserData.m         built-in demo dataset in the user-data format
+├── examples/
+│   └── runMyOwnData.m        editable template: drive the model from a script
 ├── data/
 │   ├── ActCurveSim120240819.mat  vendored pCa<->activation curve (self-contained)
 │   └── spindleModelFig.png       model schematic shown on the Overview tab
@@ -276,7 +203,7 @@ spindleModelTutorial/
 │   ├── matlabMuscleSpindleModellingTools/   12 files: the model
 │   └── gammaDriveOptimization/               2 files: B-spline gamma routines
 ├── tools/
-│   └── refreshVendor.m       re-sync vendor/ from the source repos
+│   └── refreshVendor.m       re-sync vendor/ from the source repos (maintainers)
 ├── docs/                     standalone narrative (mirrors the in-app text)
 └── tests/
     └── smokeTest.m           headless checks for the compute layer
