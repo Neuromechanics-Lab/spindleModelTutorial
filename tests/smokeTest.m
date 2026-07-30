@@ -37,8 +37,27 @@ nfail = nfail + check('bin_pops has one row per strain bin', ...
     size(out.bag.bin_pops, 1) == numel(out.x_bins));
 nfail = nfail + check('receptor potential is non-negative and finite', ...
     all(out.r >= 0) && all(isfinite(out.r)));
+% Compare the stretch response against the SETTLED resting level, not against
+% rd(1). The trace now starts after the settle window, so rd(1) is the working
+% baseline (~2.9) rather than the pre-activation ~0 that made this vacuous.
+t0   = out.params.protocol.perturbStart;
+pre  = out.t < t0;
+dur  = out.t >= t0 & out.t < t0 + out.params.protocol.rampDur;
 nfail = nfail + check('ramp-and-hold drives a dynamic response (rd peak > baseline)', ...
-    max(out.rd) > 3 * (out.rd(1) + eps));
+    max(out.rd(dur)) > 1.4 * median(out.rd(pre)));
+
+% Firing must stay INFORMATIVE. integrateAndFire_v2 is refractory-limited, so a
+% resting level left in the integrator pins every spike at the ceiling and the
+% firing panel becomes a flat line - which is what the settle window prevents.
+ceilHz = 1 / (3 * out.params.sim.dt);          % min ISI is ~3 samples
+ifr = out.IFR(isfinite(out.IFR));
+nfail = nfail + check('firing is not saturated at the refractory ceiling', ...
+    mean(ifr > 0.98 * ceilHz) < 0.10);
+nfail = nfail + check('firing shows baseline -> dynamic burst -> plateau', ...
+    max(ifr(out.t_firing >= t0 & out.t_firing < t0 + 0.2)) > ...
+    3 * median(ifr(out.t_firing < t0)));
+fprintf('   firing : rest %.0f, peak %.0f, %.0f%% at the %.0f/s ceiling\n', ...
+    median(ifr(out.t_firing < t0)), max(ifr), 100*mean(ifr > 0.98*ceilHz), ceilHz);
 
 % ---- 2. Protocol variants run ----------------------------------------
 for typ = {'sine', 'triangle'}
@@ -52,7 +71,9 @@ end
 pS = defaultTutorialParams();
 pS.gamma.chainMode = 'sine'; pS.gamma.chainOn = 0.6; pS.gamma.chainAmp_pct = 25;
 oS = tutorialForwardSim(pS);
-nfail = nfail + check('chain silent before its onset', all(oS.pCaC(1:500) > 8.9));
+% Index by TIME, not by sample: the returned trace starts at p.sim.settle, so a
+% fixed sample range no longer lines up with the requested onset.
+nfail = nfail + check('chain silent before its onset', all(oS.pCaC(oS.t < 0.6) > 8.9));
 nfail = nfail + check('chain drive active after onset', min(oS.pCaC(700:end)) < 8);
 
 % ---- 4. Parameter override takes effect ------------------------------
@@ -102,6 +123,14 @@ nfail = nfail + check('example user-data reports forward + optimize available', 
 uo = runForwardFromData(d);
 nfail = nfail + check('forward-from-data produces finite firing-ready output', ...
     all(isfinite(uo.r)) && isfield(uo, 'IFR'));
+% Same guard as the parametric path. This one hid the longest: the helper that
+% converts activation -> pCa forced the first samples silent, so the lead-in was
+% holding SILENCE and the fibers never settled.
+uifr = uo.IFR(isfinite(uo.IFR));
+nfail = nfail + check('forward-from-data firing is not saturated', ...
+    mean(uifr > 0.98 / (3 * (uo.t(2) - uo.t(1)))) < 0.10);
+nfail = nfail + check('forward-from-data starts from a settled resting level', ...
+    uo.r(1) > 0.5 * median(uo.r));
 nfail = nfail + check('forward-from-data activation traces are in [0,1]', ...
     all(uo.actB >= -1e-9 & uo.actB <= 1+1e-9));
 

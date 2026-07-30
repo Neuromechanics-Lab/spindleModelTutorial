@@ -27,14 +27,25 @@ function p = defaultTutorialParams()
 % -- Time base ----------------------------------------------------------
 p.sim.dt   = 0.001;   % s, integration step (matches the toolbox convention)
 p.sim.tEnd = 2.0;     % s, total simulated time
+% Settle-in window, run but not returned. The fibers start slack and silent, so
+% the drive needs ~0.2 s to reach its operating point. That startup transient is
+% numerical, not physiological, and leaving it in wrecks the firing model:
+% integrateAndFire_v2 takes r(1) as the resting offset, so starting before the
+% drive has settled leaves the whole tonic level in the integrator and pins
+% firing at its ceiling. tutorialForwardSim trims everything to t >= settle.
+p.sim.settle = 0.25;  % s
 
 % -- Length protocol (applied to the MTU) -------------------------------
 % A long ramp by default so the interesting phase fills most of the window.
 p.protocol.type          = 'ramp-hold';  % 'ramp-hold' | 'sine' | 'triangle'
 p.protocol.L0            = 1250;          % nm, baseline MTU command length
-p.protocol.amplitude_pct = 8;            % stretch amplitude, % of L0
-p.protocol.perturbStart  = 0.3;          % s, when the stretch begins
-p.protocol.rampDur       = 0.8;          % s, rise time (ramp-hold & triangle)
+p.protocol.amplitude_pct = 5;            % stretch amplitude, % of L0. Kept below
+                                         % ~6% so the dynamic peak stays under
+                                         % the firing model's refractory ceiling
+                                         % (1/(3*dt)) instead of clipping at it.
+p.protocol.perturbStart  = 0.6;          % s, when the stretch begins (after the
+                                         % settle, so there is a real baseline)
+p.protocol.rampDur       = 0.6;          % s, rise time (ramp-hold & triangle)
 p.protocol.freq          = 1;            % Hz, cycle frequency (sine & triangle)
 
 % -- Extrafusal muscle-tendon unit --------------------------------------
@@ -51,14 +62,15 @@ p.mtu.alphaPhase     = 0;       % rad (sine mode)
 % Levels are in % ACTIVATION (0-100) - the same units the app plots - and are
 % converted to the model's pCa internally by makeGammaDrive.
 p.gamma.chainMode      = 'constant';  % 'constant' | 'sine'
-p.gamma.chainOn        = 0.3;         % s, chain (gamma-static) onset
+p.gamma.chainOn        = 0.0;         % s, chain onset - on from the start, so it
+                                      % is settled before the visible window
 p.gamma.chainLevel_pct = 50;          % % activation: level, or MEAN of the sine
 p.gamma.chainAmp_pct   = 20;          % % activation, sine amplitude
 p.gamma.chain_freq     = 1.0;         % Hz, sine frequency
 p.gamma.chainPhase_s   = 0.0;         % s, sine phase relative to chainOn
 p.gamma.bagBurst_pct   = 90;          % % activation during the gamma-dynamic burst
-p.gamma.bagOn          = 0.3;         % s, burst onset
-p.gamma.bagOff         = 1.1;         % s, burst offset
+p.gamma.bagOn          = 0.0;         % s, burst onset (see chainOn)
+p.gamma.bagOff         = 2.0;         % s, burst offset
 
 % -- Bag fiber kinetics (override; [] = toolbox default) ----------------
 p.bag.f            = [];   % forward (attachment) rate scale

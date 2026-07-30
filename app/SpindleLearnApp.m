@@ -164,7 +164,7 @@ classdef SpindleLearnApp < SpindleAppBase
             obj.ctrl.protocol_type = obj.addDropdownRow(sc, row, 'Type', ...
                 {'ramp-hold','sine','triangle'}, 'ramp-hold'); row = row + 1;
             row = obj.addSliderRow(sc, row, 'protocol_amplitude_pct', 'Amplitude (% L0)', 0, 12, 8);
-            row = obj.addSliderRow(sc, row, 'protocol_perturbStart', 'Onset (s)', 0.1, 1.2, 0.3);
+            row = obj.addSliderRow(sc, row, 'protocol_perturbStart', 'Onset (s)', 0.3, 1.2, 0.3);
             row = obj.addSliderRow(sc, row, 'protocol_rampDur', 'Rise time (s) [ramp-hold & triangle]', 0.02, 1.5, 0.8);
             row = obj.addSliderRow(sc, row, 'protocol_freq', 'Frequency (Hz) [sine & triangle]', 0.5, 3, 1);
 
@@ -183,7 +183,7 @@ classdef SpindleLearnApp < SpindleAppBase
             row = obj.addSliderRow(sc, row, 'gamma_chain_freq', 'Chain sine frequency (Hz) [sine]', 0.25, 3, 1.0);
             row = obj.addSliderRow(sc, row, 'gamma_chainPhase_s', 'Chain sine phase (s after onset) [sine]', -1, 1, 0.0);
             row = obj.addSliderRow(sc, row, 'gamma_bagBurst_pct', 'Bag / \gamma-dynamic burst activation (%)', 0, 100, 90);
-            row = obj.addSliderRow(sc, row, 'gamma_bagOn', 'Bag burst onset (s)', 0.1, 1.5, 0.3);
+            row = obj.addSliderRow(sc, row, 'gamma_bagOn', 'Bag burst onset (s)', 0.0, 1.5, 0.3);
             row = obj.addSliderRow(sc, row, 'gamma_bagOff', 'Bag burst offset (s)', 0.4, 2.5, 1.1);
 
             % Fiber kinetics
@@ -254,6 +254,12 @@ classdef SpindleLearnApp < SpindleAppBase
         end
 
         function row = addSliderRow(obj, parent, row, key, label, lo, hi, val)
+            % The starting value comes from defaultTutorialParams whenever that
+            % struct has a matching field, so the sliders cannot drift away from
+            % the compute layer's defaults (they had). `val` is only the fallback
+            % - used by the kinetics sliders, whose params default to [] meaning
+            % "keep the toolbox value", and so have no number to read.
+            val = obj.paramDefault(key, val);
             rowGrid = uigridlayout(parent, [2 1]);
             rowGrid.Layout.Row = row; rowGrid.RowHeight = {18, 26};
             rowGrid.Padding = [0 0 0 2]; rowGrid.RowSpacing = 0;
@@ -268,6 +274,20 @@ classdef SpindleLearnApp < SpindleAppBase
             obj.ctrlDefault.(key) = val;
             obj.ctrlCaption.(key) = struct('label', label, 'handle', cap);
             row = row + 1;
+        end
+
+        function v = paramDefault(~, key, fallback)
+            % Slider keys are '<group>_<field>', matching defaultTutorialParams'
+            % nested layout (e.g. protocol_amplitude_pct -> p.protocol.amplitude_pct).
+            persistent p
+            if isempty(p), p = defaultTutorialParams(); end
+            v = fallback;
+            u = find(key == '_', 1);
+            if isempty(u), return; end
+            grp = key(1:u-1); fld = key(u+1:end);
+            if isfield(p, grp) && isfield(p.(grp), fld) && ~isempty(p.(grp).(fld))
+                v = p.(grp).(fld);
+            end
         end
 
         function dd = addDropdownRow(obj, parent, row, label, items, val)

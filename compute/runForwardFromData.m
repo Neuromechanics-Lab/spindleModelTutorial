@@ -35,17 +35,48 @@ sarcC = getDefaultSarcC();
 sarcB.hs_length = fascicle(1); sarcB.cmd_length = fascicle(1);
 sarcC.hs_length = fascicle(1); sarcC.cmd_length = fascicle(1);
 
-sarcB.pCa = actToPca(ac.actToPcaB, d.bagAct, n);
-sarcC.pCa = actToPca(ac.actToPcaC, d.chainAct, n);
+pCaB = actToPca(ac.actToPcaB, d.bagAct, n);
+pCaC = actToPca(ac.actToPcaC, d.chainAct, n);
 
-[hsB, dataB, ~, dataC] = sarcSimDriverIntrafusal20250627(t, delta_cdl, sarcB, sarcC);
+% -- Settle lead-in -----------------------------------------------------
+% The fibers start slack and unactivated. Without a lead-in the resting level
+% is still climbing when the user's window opens, and since integrateAndFire_v2
+% takes r(1) as the resting offset, that whole tonic level stays in the
+% integrator and firing pins at its ceiling. So hold the first sample for
+% p.sim.settle, run, then trim back to exactly the user's time range - no user
+% data is dropped, only simulated lead-in.
+dt    = t(2) - t(1);
+nLead = max(1, round(defaultTutorialParams().sim.settle / dt));
+tRun        = [t(1) - (nLead:-1:1)*dt, t];
+fascicleRun = [repmat(fascicle(1), 1, nLead), fascicle];
+sarcB.pCa   = [repmat(pCaB(1), 1, nLead), pCaB(:)'];
+sarcC.pCa   = [repmat(pCaC(1), 1, nLead), pCaC(:)'];
+% Toolbox convention: a run starts silent. Apply it to the head of the LEAD-IN,
+% so the user's own window keeps the activation they supplied.
+sarcB.pCa(1:min(10, numel(sarcB.pCa))) = 9;
+sarcC.pCa(1:min(10, numel(sarcC.pCa))) = 9;
+
+[hsB, dataB, ~, dataC] = sarcSimDriverIntrafusal20250627( ...
+    tRun, [0, diff(fascicleRun)], sarcB, sarcC);
 
 % -- Receptor potential + firing (default transduction gains) ----------
 tr = defaultTutorialParams().trans;
 [r_t, ~, ~, r, rs, rd] = sarc2spindle_20240310(dataB, dataC, ...
     tr.kFc, tr.kFb, tr.kYb, tr.occlusion, tr.threshold);
-[t_firing, IFR] = integrateAndFire_v2(r_t, r, 1);
+keepR = r_t >= t(1);
+[t_firing, IFR] = integrateAndFire_v2(r_t(keepR), r(keepR), 1);
 ok = isfinite(IFR); t_firing = t_firing(ok); IFR = IFR(ok);   % 1st spike has no ISI
+
+% Trim the lead-in back off everything the caller sees.
+keep = (nLead+1):numel(tRun);
+for f = {'hs_force','cb_force','passive_force','hs_length'}
+    dataB.(f{1}) = dataB.(f{1})(keep);
+    dataC.(f{1}) = dataC.(f{1})(keep);
+end
+dataB.bin_pops = dataB.bin_pops(:, keep);
+dataC.bin_pops = dataC.bin_pops(:, keep);
+r_t = r_t(keepR); r = r(keepR); rs = rs(keepR); rd = rd(keepR);
+sarcB.pCa = pCaB; sarcC.pCa = pCaC;
 
 % -- Package (same shape as tutorialForwardSim) ------------------------
 out.t = t; out.L = fascicle; out.delta_cdl = delta_cdl; out.mt = mt;
@@ -72,5 +103,7 @@ if isempty(act)
 else
     pCa = min(max(actToPcaFn(act(:)), 4.5), 9);
 end
-pCa(1:min(10, n)) = 9;   % silent onset, matching the toolbox convention
+% NB: the toolbox's silent-onset convention is applied by the caller, to the
+% start of the SIMULATED run (the lead-in) rather than here. Doing it here
+% silenced the value the lead-in holds, so the fiber never settled.
 end

@@ -76,44 +76,63 @@ sarcC.hs_length  = L(1);  sarcC.cmd_length = L(1);
     dataB, dataC, p.trans.kFc, p.trans.kFb, p.trans.kYb, ...
     p.trans.occlusion, p.trans.threshold);
 
+% -- Drop the settle-in window ------------------------------------------
+% The fibers start slack and unactivated, so the first ~0.2 s is the drive
+% coming up to its operating point - a numerical startup transient, not
+% anything physiological. It matters more than it looks: integrateAndFire_v2
+% subtracts r(1) as the resting offset, so if the trace STARTS at the
+% pre-activation value the whole tonic level survives into the integrator and
+% firing pins at its ceiling (1/(4*dt)) for the entire run. Trimming first
+% makes r(1) the settled resting level, which is what the manuscript's
+% gait-cycle sims start from, and firing becomes informative again.
+keepT = t >= p.sim.settle;        % keep the masks the same shape as the
+keepR = r_t >= p.sim.settle;      % series they index, so orientation survives
+
 % -- Predicted firing ---------------------------------------------------
 % integrateAndFire_v2 returns the instantaneous rate as 1/ISI, so the FIRST
 % spike has no defined rate (Inf). Drop non-finite entries.
-[t_firing, IFR] = integrateAndFire_v2(r_t, r, 1);
+[t_firing, IFR] = integrateAndFire_v2(r_t(keepR), r(keepR), 1);
 ok = isfinite(IFR); t_firing = t_firing(ok); IFR = IFR(ok);
 
 % -- Package ------------------------------------------------------------
-out.t         = t;
-out.L         = L;              % fascicle length
-out.delta_cdl = delta_cdl;
-out.mt        = mt;             % extrafusal MTU result
-out.pCaB      = sarcB.pCa;
-out.pCaC      = sarcC.pCa;
-out.x_bins    = hsB.x_bins;
+kt = keepT;                     % shorthand; every series below is time-indexed
+out.t         = t(kt);
+out.L         = L(kt);          % fascicle length
+out.delta_cdl = delta_cdl(kt);
+out.mt        = mt;             % extrafusal MTU result (trimmed just below)
+out.mt.alphaAct       = mt.alphaAct(kt);
+out.mt.fascicleLength = mt.fascicleLength(kt);
+out.mt.mtuCmd         = mt.mtuCmd(kt);
+out.mt.mtuLength      = mt.mtuLength(kt);
+out.mt.force          = mt.force(kt);
+out.pCaB      = sarcB.pCa(kt);
+out.pCaC      = sarcC.pCa(kt);
+out.x_bins    = hsB.x_bins;     % strain bins - NOT time-indexed
 
 % Fractional activation (0-1) of each drive, for display as % activation.
 % (pCa is the model's internal variable; activation is the friendlier input.)
 ac = loadActivationCurve();
-out.actB     = min(max(ac.pCaToActB(sarcB.pCa(:)), 0), 1);   % bag / gamma-dynamic
-out.actC     = min(max(ac.pCaToActC(sarcC.pCa(:)), 0), 1);   % chain / gamma-static
-out.actAlpha = mt.alphaAct(:);                               % extrafusal / alpha
+out.actB     = min(max(ac.pCaToActB(out.pCaB(:)), 0), 1);    % bag / gamma-dynamic
+out.actC     = min(max(ac.pCaToActC(out.pCaC(:)), 0), 1);    % chain / gamma-static
+out.actAlpha = out.mt.alphaAct(:);                           % extrafusal / alpha
 
-out.bag.hs_force      = dataB.hs_force;
-out.bag.cb_force      = dataB.cb_force;
-out.bag.passive_force = dataB.passive_force;
-out.bag.hs_length     = dataB.hs_length;
-out.bag.bin_pops      = dataB.bin_pops;
+out.bag.hs_force      = dataB.hs_force(kt);
+out.bag.cb_force      = dataB.cb_force(kt);
+out.bag.passive_force = dataB.passive_force(kt);
+out.bag.hs_length     = dataB.hs_length(kt);
+out.bag.bin_pops      = dataB.bin_pops(:, kt);   % (bins x time)
 
-out.chain.hs_force      = dataC.hs_force;
-out.chain.cb_force      = dataC.cb_force;
-out.chain.passive_force = dataC.passive_force;
-out.chain.hs_length     = dataC.hs_length;
-out.chain.bin_pops      = dataC.bin_pops;
+out.chain.hs_force      = dataC.hs_force(kt);
+out.chain.cb_force      = dataC.cb_force(kt);
+out.chain.passive_force = dataC.passive_force(kt);
+out.chain.hs_length     = dataC.hs_length(kt);
+out.chain.bin_pops      = dataC.bin_pops(:, kt);   % (bins x time)
 
-out.r_t      = r_t;
-out.r        = r;
-out.rs       = rs;
-out.rd       = rd;
+kr = keepR;
+out.r_t      = r_t(kr);
+out.r        = r(kr);
+out.rs       = rs(kr);
+out.rd       = rd(kr);
 out.t_firing = t_firing;
 out.IFR      = IFR;
 

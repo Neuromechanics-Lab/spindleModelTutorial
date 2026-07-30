@@ -43,7 +43,17 @@ else
     mt = runExtrafusalMTU(t, p, d.mtuLength, alpha);
     fascicle = mt.fascicleLength; alphaAct = mt.alphaAct;
 end
-delta_cdl = [0, diff(fascicle)];
+% -- Settle lead-in -----------------------------------------------------
+% Every objective evaluation re-runs the model, and each run starts with the
+% fibers slack and silent. Without a lead-in that startup transient dominates
+% r, integrateAndFire_v2 subtracts a pre-activation r(1), and the model rate
+% pins at its refractory ceiling - so the fit would be comparing a real target
+% against a flat line. Hold the first sample for p.sim.settle, then trim back.
+dtRun  = t(2) - t(1);
+nLead  = max(1, round(defaultTutorialParams().sim.settle / dtRun));
+tRun   = [t(1) - (nLead:-1:1)*dtRun, t];
+fascRun    = [repmat(fascicle(1), 1, nLead), fascicle];
+deltaCdlRun = [0, diff(fascRun)];
 
 sarcB0 = getDefaultSarcB(); sarcC0 = getDefaultSarcC();
 sarcB0.hs_length = fascicle(1); sarcB0.cmd_length = fascicle(1);
@@ -55,13 +65,18 @@ smoothWin = max(3, round(0.05 / d.dt));           % ~50 ms
 target = movmean(fillmissing(d.targetFiring(:)', 'linear'), smoothWin);
 
     function [rate, out] = modelRate(x)
-        g = struct('chainMode','constant','chainOn',t(1),'chain_pCa',x(1), ...
+        % chainOn is the START OF THE RUN, not of the user's window, so the
+        % chain is already active through the lead-in and settles.
+        g = struct('chainMode','constant','chainOn',tRun(1),'chain_pCa',x(1), ...
             'chain_amp',0,'chain_freq',1,'chain_phase',0, ...
             'bagBaseline',9,'bagBurst',x(2),'bagOn',x(3),'bagOff',x(4));
-        [sB, sC] = makeGammaDrive(t, g, sarcB0, sarcC0);
-        [~, dB, ~, dC] = sarcSimDriverIntrafusal20250627(t, delta_cdl, sB, sC);
+        [sB, sC] = makeGammaDrive(tRun, g, sarcB0, sarcC0);
+        [~, dB, ~, dC] = sarcSimDriverIntrafusal20250627(tRun, deltaCdlRun, sB, sC);
         [r_t, ~, ~, r] = sarc2spindle_20240310(dB, dC, tr.kFc, tr.kFb, tr.kYb, ...
             tr.occlusion, tr.threshold);
+        keepR = r_t >= t(1);
+        r_t = r_t(keepR); r = r(keepR);
+        sB.pCa = sB.pCa(keepR); sC.pCa = sC.pCa(keepR);
         [tf, ifr] = integrateAndFire_v2(r_t, r, 1);
         ok = isfinite(ifr); tf = tf(ok); ifr = ifr(ok);   % 1st spike has no ISI
         if isempty(tf)
