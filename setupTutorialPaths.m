@@ -80,7 +80,7 @@ paths.hasBspline = ~isempty(which('runSpindleSimForOpt_Bspline_5cp'));
 
 % ---- Sanity check: the functions we rely on must be visible ----
 required = {'getDefaultSarcB', 'sarcSimDriverIntrafusal20250627', ...
-            'sarc2spindle_20240310', 'integrateAndFire'};
+            'sarc2spindle_20240310', 'integrateAndFire_v2'};
 missing = required(cellfun(@(f) isempty(which(f)), required));
 if ~isempty(missing)
     error('setupTutorialPaths:missingFunctions', ...
