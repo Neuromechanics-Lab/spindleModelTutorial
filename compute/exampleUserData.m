@@ -11,13 +11,7 @@ function d = exampleUserData()
 p = defaultTutorialParams(); p.sim.tEnd = 1.8;
 % (% activation; ~pCa 6.2 and 5.8 on the chain/bag curves respectively)
 p.gamma.chainLevel_pct = 34; p.gamma.bagBurst_pct = 92;
-% The bag drive is already ON when the window opens, so the trace starts at its
-% settled resting level. That matters because integrateAndFire_v2 subtracts r(1)
-% as the offset: starting with the bag OFF leaves the whole tonic level in the
-% integrator and every spike pins at the refractory ceiling. The burst still
-% ENDS inside the window, so there is a real transition for the optimizer to
-% find and for the firing trace to show.
-p.gamma.bagOn = 0.0; p.gamma.bagOff = 1.15;
+p.gamma.bagOn = 0.35; p.gamma.bagOff = 1.15;
 ref = tutorialForwardSim(p);
 
 t = ref.t;

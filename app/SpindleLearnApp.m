@@ -164,7 +164,7 @@ classdef SpindleLearnApp < SpindleAppBase
             obj.ctrl.protocol_type = obj.addDropdownRow(sc, row, 'Type', ...
                 {'ramp-hold','sine','triangle'}, 'ramp-hold'); row = row + 1;
             row = obj.addSliderRow(sc, row, 'protocol_amplitude_pct', 'Amplitude (% L0)', 0, 12, 8);
-            row = obj.addSliderRow(sc, row, 'protocol_perturbStart', 'Onset (s)', 0.3, 1.2, 0.3);
+            row = obj.addSliderRow(sc, row, 'protocol_perturbStart', 'Onset (s)', 0.1, 1.2, 0.3);
             row = obj.addSliderRow(sc, row, 'protocol_rampDur', 'Rise time (s) [ramp-hold & triangle]', 0.02, 1.5, 0.8);
             row = obj.addSliderRow(sc, row, 'protocol_freq', 'Frequency (Hz) [sine & triangle]', 0.5, 3, 1);
 
@@ -183,7 +183,7 @@ classdef SpindleLearnApp < SpindleAppBase
             row = obj.addSliderRow(sc, row, 'gamma_chain_freq', 'Chain sine frequency (Hz) [sine]', 0.25, 3, 1.0);
             row = obj.addSliderRow(sc, row, 'gamma_chainPhase_s', 'Chain sine phase (s after onset) [sine]', -1, 1, 0.0);
             row = obj.addSliderRow(sc, row, 'gamma_bagBurst_pct', 'Bag / \gamma-dynamic burst activation (%)', 0, 100, 90);
-            row = obj.addSliderRow(sc, row, 'gamma_bagOn', 'Bag burst onset (s)', 0.0, 1.5, 0.3);
+            row = obj.addSliderRow(sc, row, 'gamma_bagOn', 'Bag burst onset (s)', 0.1, 1.5, 0.3);
             row = obj.addSliderRow(sc, row, 'gamma_bagOff', 'Bag burst offset (s)', 0.4, 2.5, 1.1);
 
             % Fiber kinetics
