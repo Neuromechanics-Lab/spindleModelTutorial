@@ -13,6 +13,8 @@ classdef SpindleToolkitApp < SpindleAppBase
         optAxFit
         optAxCost
         optCostLine                % live-updated line on optAxCost
+        optGammaLines = struct();  % persistent target/recovered drive lines
+        optFitLines   = struct();  % persistent target/initial/optimized Ia lines
         optAxGammaS
         optAxGammaD
         optRunBtn
@@ -79,9 +81,11 @@ classdef SpindleToolkitApp < SpindleAppBase
             obj.optCtrl.trueShape.Layout.Row = r; obj.optCtrl.trueShape.Layout.Column = 2;
             obj.optCtrl.trueShape.Tooltip = ['The true gamma-static waveform to recover. ' ...
                 'Try a different shape to see whether the fit still finds it.'];
+            obj.optCtrl.trueShape.ValueChangedFcn = @(s,e) obj.previewTrueDrive();
             r = r + 1;
             obj.optCtrl.trueBag = obj.addOptSpinner(cg, r, ...
                 'gamma-dynamic burst (% act.)', 0, 100, 92); r = r + 1;
+            obj.optCtrl.trueBag.ValueChangedFcn = @(s,e) obj.previewTrueDrive();
 
             hdr = uilabel(cg, 'Text', 'INITIAL guess (starts the search)', 'FontWeight', 'bold');
             hdr.Layout.Row = r; hdr.Layout.Column = [1 2]; r = r + 1;
@@ -89,6 +93,7 @@ classdef SpindleToolkitApp < SpindleAppBase
                 'gamma-dynamic burst (% act.)', 0, 100, 38); r = r + 1;
 
             obj.optCtrl.tEnd    = obj.addOptSpinner(cg, r, 'Sim duration (s)', 1.0, 3.0, 1.9); r = r + 1;
+            obj.optCtrl.tEnd.ValueChangedFcn = @(s,e) obj.previewTrueDrive();
             obj.optCtrl.maxIter = obj.addOptSpinner(cg, r, 'Max iterations', 5, 40, 12); r = r + 1;
 
             obj.optCtrl.parallel = uicheckbox(cg, 'Text', 'Use parallel (faster; starts a pool)', 'Value', false);
@@ -103,10 +108,11 @@ classdef SpindleToolkitApp < SpindleAppBase
             obj.optStatus = uilabel(cg, 'Text', 'Ready.', 'WordWrap', 'on', 'FontColor', obj.S.muted);
             obj.optStatus.Layout.Row = r; obj.optStatus.Layout.Column = [1 2]; r = r + 1;
 
-            note = uilabel(cg, 'Text', ['The target is self-generated, so the true gamma waveform is known ' ...
-                'and drawn dashed on the right. Burst TIMING is held fixed (the manuscript optimizes it in ' ...
-                'an outer grid); it is hard to identify from a sharp transient. Each objective evaluation ' ...
-                'runs the full model, so a fit takes ~1-2 min.'], 'WordWrap', 'on', ...
+            note = uilabel(cg, 'Text', ['The target is self-generated, so the true gamma waveform is known: ' ...
+                'it is drawn dashed on the left and redraws as you change these settings, before you run ' ...
+                'anything. Burst TIMING is held fixed (the manuscript optimizes it in an outer grid); it is ' ...
+                'hard to identify from a sharp transient. Each objective evaluation runs the full model, ' ...
+                'so a fit takes ~1-2 min.'], 'WordWrap', 'on', ...
                 'FontAngle', 'italic', 'FontColor', obj.S.muted);
             note.Layout.Row = r; note.Layout.Column = [1 2];
 
@@ -132,13 +138,15 @@ classdef SpindleToolkitApp < SpindleAppBase
             pg.Layout.Row = 1; pg.Layout.Column = 1;
             pg.RowHeight = {'1x','1x'}; pg.Padding = [0 0 0 0];
             pg.RowSpacing = 8; pg.ColumnSpacing = 10; pg.BackgroundColor = obj.S.card;
-            obj.optAxFit   = uiaxes(pg); obj.optAxFit.Layout.Row = 1;   obj.optAxFit.Layout.Column = 1;
-            obj.optAxGammaS = uiaxes(pg); obj.optAxGammaS.Layout.Row = 1; obj.optAxGammaS.Layout.Column = 2;
-            obj.optAxCost  = uiaxes(pg); obj.optAxCost.Layout.Row = 2;  obj.optAxCost.Layout.Column = 1;
-            obj.optAxGammaD = uiaxes(pg); obj.optAxGammaD.Layout.Row = 2; obj.optAxGammaD.Layout.Column = 2;
+            % LEFT column = the drive you are trying to recover (target drawn
+            % live as the controls change); RIGHT column = how well the fit did.
+            % Reading left-to-right is then cause -> effect.
+            obj.optAxGammaS = obj.axInPanel(pg, 1, 1);
+            obj.optAxGammaD = obj.axInPanel(pg, 2, 1);
+            obj.optAxFit    = obj.axInPanel(pg, 1, 2);
+            obj.optAxCost   = obj.axInPanel(pg, 2, 2);
             obj.optTable  = uitable(outer, 'ColumnName', {'Parameter','True','Initial','Recovered','Recovery %'});
             obj.optTable.Layout.Row = 2; obj.optTable.Layout.Column = 1;
-            title(obj.optAxFit,    'Target Ia vs model fit  (press Run optimization)');
             title(obj.optAxCost,   'Cost vs iteration');
             xlabel(obj.optAxCost, 'iteration'); ylabel(obj.optAxCost, 'RMSE cost');
             % Build the cost line ONCE and update its data each iteration. Doing
@@ -147,9 +155,75 @@ classdef SpindleToolkitApp < SpindleAppBase
             % are needed to trigger it), so never rebuild this plot in the loop.
             obj.optCostLine = plot(obj.optAxCost, NaN, NaN, '-o', 'LineWidth', 1.6, ...
                 'Color', obj.S.accent, 'MarkerFaceColor', obj.S.accent, 'MarkerSize', 4);
-            title(obj.optAxGammaS, 'Recovered \gamma-static (chain)');
-            title(obj.optAxGammaD, 'Recovered \gamma-dynamic (bag burst)');
+            ax = obj.optAxFit;
+            obj.optFitLines.target = plot(ax, NaN, NaN, 'Color', obj.S.total, 'LineWidth', 2);
+            hold(ax, 'on');
+            obj.optFitLines.init = plot(ax, NaN, NaN, '--', 'Color', obj.S.bag, 'LineWidth', 1.2);
+            obj.optFitLines.opt  = plot(ax, NaN, NaN, '-', 'Color', obj.S.green, 'LineWidth', 1.6);
+            hold(ax, 'off');
+            title(ax, 'Target Ia vs model fit  (press Run optimization)');
+            xlabel(ax, 'time (s)'); ylabel(ax, 'r (a.u.)');
+            legend(ax, {'target (truth)','initial guess','optimized fit'}, ...
+                'Location', 'best', 'FontSize', 8);
+
+            % Same trick for the two drive panels: build every line ONCE, then
+            % only push data into it. The target lines are refreshed on every
+            % control change, so rebuilding them would hit exactly the cla +
+            % beautify + drawnow combination that blanks the tab.
+            s = obj.S; grey = [0.35 0.35 0.4];
+            ax = obj.optAxGammaS;
+            obj.optGammaLines.sTrue  = plot(ax, NaN, NaN, '--', 'Color', grey, 'LineWidth', 1.5);
+            hold(ax, 'on');
+            obj.optGammaLines.sTrueCP = plot(ax, NaN, NaN, 'o', 'MarkerSize', 7, ...
+                'LineStyle', 'none', 'MarkerFaceColor', [0.6 0.6 0.6], 'MarkerEdgeColor', grey);
+            obj.optGammaLines.sOpt   = plot(ax, NaN, NaN, '-', 'Color', s.chain, 'LineWidth', 1.8);
+            obj.optGammaLines.sOptCP = plot(ax, NaN, NaN, 'o', 'MarkerSize', 7, ...
+                'LineStyle', 'none', 'Color', s.chain, 'MarkerFaceColor', s.chain);
+            hold(ax, 'off');
+            title(ax, '\gamma-static (chain): target vs recovered');
+            xlabel(ax, 'time (s)'); ylabel(ax, 'activation (%)'); ylim(ax, [0 100]);
+            legend(ax, {'target','target CP','recovered','recovered CP'}, ...
+                'Location', 'best', 'FontSize', 8);
+
+            ax = obj.optAxGammaD;
+            obj.optGammaLines.dTrue = plot(ax, NaN, NaN, '--', 'Color', grey, 'LineWidth', 1.5);
+            hold(ax, 'on');
+            obj.optGammaLines.dOpt  = plot(ax, NaN, NaN, '-', 'Color', s.bag, 'LineWidth', 1.8);
+            hold(ax, 'off');
+            title(ax, '\gamma-dynamic (bag burst): target vs recovered');
+            xlabel(ax, 'time (s)'); ylabel(ax, 'activation (%)'); ylim(ax, [0 100]);
+            legend(ax, {'target','recovered'}, 'Location', 'best', 'FontSize', 8);
+
             obj.beautify(ppanel);
+            obj.previewTrueDrive();
+        end
+
+        function previewTrueDrive(obj)
+            % Draw the TRUE drive the user has just dialled in, before any fit.
+            % Cheap: tutorialOptDemo's preview mode skips the MTU solve and the
+            % optimizer, so this is safe to run straight from a control callback.
+            if isempty(which('runSpindleSimForOpt_Bspline_5cp')), return; end
+            try
+                ac = loadActivationCurve();
+                opts = struct('previewOnly', true, ...
+                    'trueBagPca', ac.actToPcaB(obj.pctToFrac(obj.optCtrl.trueBag.Value)), ...
+                    'trueCP',     ac.actToPcaC(obj.pctToFrac( ...
+                                      obj.chainShapeByName(obj.optCtrl.trueShape.Value))), ...
+                    'tEnd',       obj.optCtrl.tEnd.Value);
+                gT = tutorialOptDemo(opts).gammaTrue;
+                pcaC2pct = @(v) 100 * min(max(ac.pCaToActC(v), 0), 1);
+                pcaB2pct = @(v) 100 * min(max(ac.pCaToActB(v), 0), 1);
+                L = obj.optGammaLines;
+                set(L.sTrue,   'XData', gT.t, 'YData', pcaC2pct(gT.chainPca));
+                set(L.sTrueCP, 'XData', gT.controlTimes, 'YData', pcaC2pct(gT.controlPca));
+                set(L.dTrue,   'XData', gT.t, 'YData', pcaB2pct(gT.bagPca));
+                % A previous run's recovered traces no longer match this target.
+                set([L.sOpt L.sOptCP L.dOpt], 'XData', NaN, 'YData', NaN);
+                xlim(obj.optAxGammaS, [gT.t(1) gT.t(end)]);
+                xlim(obj.optAxGammaD, [gT.t(1) gT.t(end)]);
+            catch ME
+                obj.optStatus.Text = ['Could not preview the target drive: ' ME.message];
+            end
         end
 
         function names = chainShapeNames(~)
@@ -173,6 +247,23 @@ classdef SpindleToolkitApp < SpindleAppBase
             spn.Layout.Row = row; spn.Layout.Column = 2;
         end
 
+        function ax = axInPanel(obj, gridParent, row, col)
+            % One axes, alone in its own uipanel. A legend created for an axes
+            % that sits DIRECTLY in a uigridlayout becomes an extra grid child
+            % (with a Layout that has no Row/Column, so it cannot be pinned),
+            % which grows the grid and blanks every axes in it. Parenting the
+            % axes to a panel keeps each legend inside that panel, so the
+            % grid's child count is fixed for the life of the window.
+            p = uipanel(gridParent, 'BorderType', 'none', 'BackgroundColor', obj.S.card);
+            p.Layout.Row = row; p.Layout.Column = col;
+            ax = uiaxes(p, 'Units', 'normalized', 'Position', [0 0 1 1]);
+        end
+
+        function f = pctToFrac(~, v)
+            % % activation -> the [0 1] fraction the activation curve expects.
+            f = min(max(v / 100, 0), 1);
+        end
+
         function runOptimization(obj)
             obj.optStatus.Text = 'Setting up target + MTU...';
             obj.setBusy(true);
@@ -183,8 +274,8 @@ classdef SpindleToolkitApp < SpindleAppBase
                 % the optimizer fits pCa natively, exactly as the manuscript
                 % does. Convert at this boundary only.
                 ac = loadActivationCurve();
-                pct2pcaB = @(v) ac.actToPcaB(min(max(v/100, 0), 1));
-                pct2pcaC = @(v) ac.actToPcaC(min(max(v/100, 0), 1));
+                pct2pcaB = @(v) ac.actToPcaB(obj.pctToFrac(v));
+                pct2pcaC = @(v) ac.actToPcaC(obj.pctToFrac(v));
 
                 opts = struct();
                 opts.trueBagPca  = pct2pcaB(obj.optCtrl.trueBag.Value);
@@ -221,18 +312,14 @@ classdef SpindleToolkitApp < SpindleAppBase
         end
 
         function plotOptResult(obj, res)
-            s = obj.S; grey = [0.35 0.35 0.4];
-
-            % Ia fit
-            ax = obj.optAxFit; cla(ax);
-            plot(ax, res.t, res.target, 'Color', s.total, 'LineWidth', 2); hold(ax, 'on');
-            plot(ax, res.t, res.fit0, '--', 'Color', s.bag, 'LineWidth', 1.2);
-            plot(ax, res.t, res.fitOpt, '-', 'Color', s.green, 'LineWidth', 1.6);
-            hold(ax, 'off');
+            % Ia fit (lines built at construction - only their data changes)
+            ax = obj.optAxFit;
+            set(obj.optFitLines.target, 'XData', res.t, 'YData', res.target);
+            set(obj.optFitLines.init,   'XData', res.t, 'YData', res.fit0);
+            set(obj.optFitLines.opt,    'XData', res.t, 'YData', res.fitOpt);
             title(ax, 'Target Ia vs model fit');
-            xlabel(ax, 'time (s)'); ylabel(ax, 'r (a.u.)');
-            legend(ax, {'target (truth)','initial guess','optimized fit'}, 'Location', 'best', 'FontSize', 8);
             obj.padY(ax, [res.target(:); res.fit0(:); res.fitOpt(:)]);
+            xlim(ax, [res.t(1) res.t(end)]);
 
             % Everything is shown in % activation, to match the rest of the
             % tutorial. The fit itself ran in pCa (the model's own variable).
@@ -240,28 +327,20 @@ classdef SpindleToolkitApp < SpindleAppBase
             pcaC2pct = @(v) 100 * min(max(ac.pCaToActC(v), 0), 1);
             pcaB2pct = @(v) 100 * min(max(ac.pCaToActB(v), 0), 1);
 
-            % Recovered gamma-static (chain) waveform + control points
+            % Drive panels: the target is already drawn (previewTrueDrive), so
+            % only push data into the existing lines - see the note where they
+            % are built. Re-setting the target too keeps it honest if the run
+            % used values the preview never saw.
             gT = res.gammaTrue; gO = res.gammaOpt;
-            ax = obj.optAxGammaS; cla(ax);
-            plot(ax, gT.t, pcaC2pct(gT.chainPca), '--', 'Color', grey, 'LineWidth', 1.5); hold(ax, 'on');
-            plot(ax, gO.t, pcaC2pct(gO.chainPca), '-', 'Color', s.chain, 'LineWidth', 1.8);
-            plot(ax, gT.controlTimes, pcaC2pct(gT.controlPca), 'o', 'MarkerSize', 7, ...
-                'MarkerFaceColor', [0.6 0.6 0.6], 'MarkerEdgeColor', grey);
-            plot(ax, gO.controlTimes, pcaC2pct(gO.controlPca), 'o', 'MarkerSize', 7, ...
-                'Color', s.chain, 'MarkerFaceColor', s.chain);
-            hold(ax, 'off');
-            title(ax, 'Recovered \gamma-static (chain)');
-            xlabel(ax, 'time (s)'); ylabel(ax, 'activation (%)');
-            legend(ax, {'true','recovered','true CP','recovered CP'}, 'Location', 'best', 'FontSize', 8);
-
-            % Recovered gamma-dynamic (bag burst)
-            ax = obj.optAxGammaD; cla(ax);
-            plot(ax, gT.t, pcaB2pct(gT.bagPca), '--', 'Color', grey, 'LineWidth', 1.5); hold(ax, 'on');
-            plot(ax, gO.t, pcaB2pct(gO.bagPca), '-', 'Color', s.bag, 'LineWidth', 1.8);
-            hold(ax, 'off');
-            title(ax, 'Recovered \gamma-dynamic (bag burst)');
-            xlabel(ax, 'time (s)'); ylabel(ax, 'activation (%)');
-            legend(ax, {'true','recovered'}, 'Location', 'best', 'FontSize', 8);
+            L = obj.optGammaLines;
+            set(L.sTrue,   'XData', gT.t, 'YData', pcaC2pct(gT.chainPca));
+            set(L.sTrueCP, 'XData', gT.controlTimes, 'YData', pcaC2pct(gT.controlPca));
+            set(L.sOpt,    'XData', gO.t, 'YData', pcaC2pct(gO.chainPca));
+            set(L.sOptCP,  'XData', gO.controlTimes, 'YData', pcaC2pct(gO.controlPca));
+            set(L.dTrue,   'XData', gT.t, 'YData', pcaB2pct(gT.bagPca));
+            set(L.dOpt,    'XData', gO.t, 'YData', pcaB2pct(gO.bagPca));
+            xlim(obj.optAxGammaS, [gT.t(1) gT.t(end)]);
+            xlim(obj.optAxGammaD, [gT.t(1) gT.t(end)]);
 
             % Table (all 7 fitted parameters), converted to the displayed units:
             % activation % for the drive levels, seconds for the phase. Recovery
@@ -286,7 +365,7 @@ classdef SpindleToolkitApp < SpindleAppBase
                 data{i,5} = round(100 * (1 - abs(ov - tv) / span), 1);
             end
             obj.optTable.Data = data;
-            obj.beautify(obj.optAxFit.Parent);
+            obj.beautify(obj.optAxFit.Parent.Parent);   % the axes grid, not its panel
         end
 
         % ================================================================

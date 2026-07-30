@@ -82,6 +82,15 @@ if tpaths.hasBspline
     fprintf('   opt    : %s\n', mat2str(res.xOpt, 3));
     fprintf('   recov%% : %s\n', mat2str(round(res.recoveryPct), 3));
     fprintf('   cost %.4g -> %.4g\n', res.fval0, res.fvalOpt);
+
+    % The GUI previews the target drive with previewOnly (no MTU, no fit). It
+    % must be the SAME waveform the fit is asked to recover, or the preview
+    % would quietly lie about what is being optimized.
+    pv = tutorialOptDemo(struct('tEnd', 1.4, 'previewOnly', true));
+    nfail = nfail + check('preview drive matches the fit''s own target exactly', ...
+        isequal(pv.gammaTrue.chainPca, res.gammaTrue.chainPca) && ...
+        isequal(pv.gammaTrue.bagPca,   res.gammaTrue.bagPca) && ...
+        isequal(pv.gammaTrue.controlPca, res.gammaTrue.controlPca));
 else
     fprintf('  [SKIP] optimization demo (gammaDriveOptimization not on path)\n');
 end

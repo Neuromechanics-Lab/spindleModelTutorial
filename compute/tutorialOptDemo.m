@@ -80,10 +80,6 @@ maxIter     = getOpt(opts, 'maxIter', 12);
 iterFcn     = getOpt(opts, 'iterFcn', []);
 useParallel = getOpt(opts, 'useParallel', false);  % parallel finite differences
 
-% -- Extrafusal MTU (compute once) -------------------------------------
-mt = runExtrafusalMTU(t, p);
-mtData = mt.mtData;
-
 % -- Activation interpolants (chain) -----------------------------------
 ac = loadActivationCurve();
 pCaToAct = ac.pCaToActC;
@@ -92,6 +88,21 @@ actToPca = ac.actToPcaC;
 % -- Base fiber structs -------------------------------------------------
 sarcB0 = getDefaultSarcB(); sarcB0.initial_pCa = 9;
 sarcC0 = getDefaultSarcC();
+
+% -- Preview mode -------------------------------------------------------
+% The GUI draws the TRUE drive live as the user picks it. Returning here,
+% before the expensive MTU solve, reuses this function's own timing
+% constants and recoverGamma, so what the user previews can never drift
+% from the waveform the fit is actually asked to recover.
+if getOpt(opts, 'previewOnly', false)
+    result = struct('gammaTrue', recoverGamma(xTrue), ...
+                    'cycle_period', cycle_period);
+    return
+end
+
+% -- Extrafusal MTU (compute once) -------------------------------------
+mt = runExtrafusalMTU(t, p);
+mtData = mt.mtData;
 
     function [r_t, r, rs, rd] = simulate(x)
         sB = sarcB0; sC = sarcC0;
