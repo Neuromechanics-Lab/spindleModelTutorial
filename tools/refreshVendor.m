@@ -43,7 +43,7 @@ toolboxFiles = {
     fullfile('spindle_model', 'getDefaultSarcC.m')
     fullfile('spindle_model', 'sarcSimDriverIntrafusal20250627.m')
     fullfile('spindle_model', 'sarc2spindle_20240310.m')
-    fullfile('spindle_model', 'integrateAndFire.m')
+    fullfile('spindle_model', 'integrateAndFire_v2.m')
     fullfile('spindle_model', 'find_hsl_from_force_spindle20250627.m')
     fullfile('extrafusal_model', '@halfSarcWithCoopExtrafusal_3state', ...
              'halfSarcWithCoopExtrafusal_3state.m')

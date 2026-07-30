@@ -37,7 +37,7 @@ The two windows share one codebase (so they stay visually consistent) but open
 independently, so the Learn window stays light and never touches the optimization
 code. Everything each window plots is produced by the **real** toolbox functions
 (`musTenDriver20250627`, `sarcSimDriverIntrafusal20250627`,
-`sarc2spindle_20240310`, `integrateAndFire`), and the optimization tab calls
+`sarc2spindle_20240310`, `integrateAndFire_v2`), and the optimization tab calls
 `gammaDriveOptimization`'s own B-spline routines. Nothing is re-implemented — you
 are driving the published model.
 

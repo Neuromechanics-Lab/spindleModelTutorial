@@ -17,7 +17,7 @@ function out = tutorialForwardSim(p, mtCache)
 %     sarc2spindle_20240310             -> Ia receptor potential (rs, rd, r)
 %              |
 %              v
-%     integrateAndFire                  -> predicted firing (IFR)
+%     integrateAndFire_v2               -> predicted firing (spikes/s)
 %
 %   out = tutorialForwardSim(p, mtCache) reuses a previously computed MTU result
 %   (from runExtrafusalMTU) instead of recomputing it. Because gamma drive does
@@ -77,7 +77,10 @@ sarcC.hs_length  = L(1);  sarcC.cmd_length = L(1);
     p.trans.occlusion, p.trans.threshold);
 
 % -- Predicted firing ---------------------------------------------------
-[t_firing, IFR] = integrateAndFire(r_t, r, 1);
+% integrateAndFire_v2 returns the instantaneous rate as 1/ISI, so the FIRST
+% spike has no defined rate (Inf). Drop non-finite entries.
+[t_firing, IFR] = integrateAndFire_v2(r_t, r, 1);
+ok = isfinite(IFR); t_firing = t_firing(ok); IFR = IFR(ok);
 
 % -- Package ------------------------------------------------------------
 out.t         = t;

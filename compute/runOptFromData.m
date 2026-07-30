@@ -62,7 +62,8 @@ target = movmean(fillmissing(d.targetFiring(:)', 'linear'), smoothWin);
         [~, dB, ~, dC] = sarcSimDriverIntrafusal20250627(t, delta_cdl, sB, sC);
         [r_t, ~, ~, r] = sarc2spindle_20240310(dB, dC, tr.kFc, tr.kFb, tr.kYb, ...
             tr.occlusion, tr.threshold);
-        [tf, ifr] = integrateAndFire(r_t, r, 1);
+        [tf, ifr] = integrateAndFire_v2(r_t, r, 1);
+        ok = isfinite(ifr); tf = tf(ok); ifr = ifr(ok);   % 1st spike has no ISI
         if isempty(tf)
             rate = zeros(1, n);
         else

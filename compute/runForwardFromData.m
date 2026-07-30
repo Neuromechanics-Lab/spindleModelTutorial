@@ -44,7 +44,8 @@ sarcC.pCa = actToPca(ac.actToPcaC, d.chainAct, n);
 tr = defaultTutorialParams().trans;
 [r_t, ~, ~, r, rs, rd] = sarc2spindle_20240310(dataB, dataC, ...
     tr.kFc, tr.kFb, tr.kYb, tr.occlusion, tr.threshold);
-[t_firing, IFR] = integrateAndFire(r_t, r, 1);
+[t_firing, IFR] = integrateAndFire_v2(r_t, r, 1);
+ok = isfinite(IFR); t_firing = t_firing(ok); IFR = IFR(ok);   % 1st spike has no ISI
 
 % -- Package (same shape as tutorialForwardSim) ------------------------
 out.t = t; out.L = fascicle; out.delta_cdl = delta_cdl; out.mt = mt;

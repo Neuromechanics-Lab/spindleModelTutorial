@@ -25,8 +25,8 @@ s = SpindleAppBase.sty();
 
 f = uifigure('Name', 'Muscle Spindle Model', 'Position', [200 250 520 380], ...
     'Color', s.canvasApp, 'Resize', 'off');
-g = uigridlayout(f, [5 1]);
-g.RowHeight = {'fit', 'fit', '1x', '1x', 'fit'};
+g = uigridlayout(f, [4 1]);
+g.RowHeight = {'fit', 'fit', '1x', '1x'};
 g.Padding = [24 20 24 18]; g.RowSpacing = 12; g.BackgroundColor = s.canvasApp;
 
 t = uilabel(g, 'Text', 'Muscle Spindle Model', 'FontSize', 20, 'FontWeight', 'bold', ...
@@ -47,32 +47,28 @@ b2 = uibutton(g, 'Text', 'Analysis Toolkit  (Apply)', ...
 b2.Layout.Row = 4;
 b2.Tooltip = 'Gamma optimization + Your data - fit the model to data.';
 
-statusLbl = uilabel(g, 'Text', '', 'FontSize', 11, 'FontColor', s.muted, ...
-    'HorizontalAlignment', 'center');
-statusLbl.Layout.Row = 5;
-
 % Warm the model up in the background so the first real simulation is fast.
-startWarmup(f, statusLbl);
+% This is silent: an internal speed-up, not something the reader needs to see.
+startWarmup(f);
 
 if nargout > 0, fig = f; end
 end
 
 
 % ======================================================================
-function startWarmup(f, statusLbl)
+function startWarmup(f)
 % Run a tiny simulation shortly after the launcher appears. This forces MATLAB
 % to just-in-time compile the model functions (the dominant one-time cost) while
 % the user is still reading the menu, rather than on their first real run.
-statusLbl.Text = 'Preparing the model (first run will be faster)...';
 tmr = timer('StartDelay', 0.4, 'ExecutionMode', 'singleShot', 'BusyMode', 'drop', ...
-    'TimerFcn', @(~,~) doWarmup(f, statusLbl), ...
+    'TimerFcn', @(~,~) doWarmup(f), ...
     'StopFcn',  @(tm,~) delete(tm));
 % If the launcher is closed first, stop the timer so its callback can't fire.
 f.DeleteFcn = @(~,~) safeStop(tmr);
 start(tmr);
 end
 
-function doWarmup(f, statusLbl)
+function doWarmup(~)
 % The one-time cold costs are (measured): the compute just-in-time compile (~2s),
 % the first uiaxes plot (~4-5s) and the first uihtml render (~3s). Pay them all
 % here, on a throwaway off-screen figure, so the real windows feel instant.
@@ -92,9 +88,8 @@ try
 catch
     % Warmup is only an optimization; ignore any failure silently.
 end
-if isvalid(f) && isgraphics(statusLbl)
-    statusLbl.Text = 'Ready - the first simulation will now be quick.';
-end
+% (Silent by design - the warm-up is an internal speed-up, not something the
+% reader needs to know about. Leave the status line blank.)
 end
 
 function safeStop(tmr)

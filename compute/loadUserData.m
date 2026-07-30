@@ -66,6 +66,17 @@ if max(abs(dts - dt)) > 0.25 * dt
     warning('loadUserData:nonuniform', ...
         'Time steps are non-uniform; the model assumes ~uniform dt (using median dt = %.4g s).', dt);
 end
+% The model was developed and tuned at dt = 1 ms, and its behaviour is NOT
+% dt-invariant: the integrate-and-fire stage quantises spike intervals to dt (so
+% firing rates shift with dt), and the MTU force balance is solved once per step.
+% Warn rather than refuse - other steps still run, but results are less
+% comparable to the published ones.
+if dt > 0.002 || dt < 0.0002
+    warning('loadUserData:timestep', ...
+        ['dt = %.4g s. The model is tuned for dt = 1 ms; well outside ~0.2-2 ms the\n', ...
+         'firing output in particular will differ from the published behaviour.\n', ...
+         'Consider resampling your data to 1 kHz.'], dt);
+end
 d.t = t; d.dt = dt; d.n = n;
 
 % -- length -------------------------------------------------------------
