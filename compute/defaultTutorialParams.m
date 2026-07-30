@@ -48,16 +48,17 @@ p.mtu.alphaPhase     = 0;       % rad (sine mode)
 
 % -- Gamma (fusimotor) drive -------------------------------------------
 % Chain fiber = gamma static ; Bag fiber = gamma dynamic (phasic burst).
-p.gamma.chainMode     = 'constant';  % 'constant' | 'sine'
-p.gamma.chainOn       = 0.3;         % s, chain (gamma-static) onset
-p.gamma.chain_pCa     = 6.0;         % gamma static level / sine vertical offset
-p.gamma.chain_amp     = 0.5;         % gamma static sine amplitude (pCa)
-p.gamma.chain_freq    = 1.0;         % gamma static sine frequency (Hz)
-p.gamma.chain_phase   = 0.0;         % gamma static sine phase (rad)
-p.gamma.bagBaseline   = 9.0;         % bag pCa when gamma-dynamic is silent
-p.gamma.bagBurst      = 6.0;         % bag pCa during the gamma-dynamic burst
-p.gamma.bagOn         = 0.3;         % s, burst onset
-p.gamma.bagOff        = 1.1;         % s, burst offset
+% Levels are in % ACTIVATION (0-100) - the same units the app plots - and are
+% converted to the model's pCa internally by makeGammaDrive.
+p.gamma.chainMode      = 'constant';  % 'constant' | 'sine'
+p.gamma.chainOn        = 0.3;         % s, chain (gamma-static) onset
+p.gamma.chainLevel_pct = 50;          % % activation: level, or MEAN of the sine
+p.gamma.chainAmp_pct   = 20;          % % activation, sine amplitude
+p.gamma.chain_freq     = 1.0;         % Hz, sine frequency
+p.gamma.chainPhase_s   = 0.0;         % s, sine phase relative to chainOn
+p.gamma.bagBurst_pct   = 90;          % % activation during the gamma-dynamic burst
+p.gamma.bagOn          = 0.3;         % s, burst onset
+p.gamma.bagOff         = 1.1;         % s, burst offset
 
 % -- Bag fiber kinetics (override; [] = toolbox default) ----------------
 p.bag.f            = [];   % forward (attachment) rate scale

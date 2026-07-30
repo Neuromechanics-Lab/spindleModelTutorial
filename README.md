@@ -24,7 +24,7 @@ and how fusimotor (γ) drive is inferred by fitting the model to data.
 |-----|--------------|
 | **Overview** | What the model is and how the pipeline fits together. |
 | **Guided walkthrough** | A narrated, five-step tour: inputs (length + activation) → cross-bridge distribution (pre/early/post-stretch snapshots, with cursors) → receptor potential + yank → predicted firing → the whole pipeline. |
-| **Playground** | Free exploration. Sliders for the stretch protocol, the **extrafusal MTU** (α drive + tendon stiffness), gamma drive (including a sinusoidal gamma-static with phase/offset), fiber kinetics, and transduction gains. Plots length, **activation (%)**, fiber forces, the receptor potential, **predicted firing**, and a **cross-bridge distribution scrubber**. Every panel is badged **INPUT / INTERMEDIATE / OUTPUT**. |
+| **Playground** | Free exploration, with a **Reset** button to return every parameter to its starting value. Sliders for the stretch protocol, the **extrafusal MTU** (α drive + tendon stiffness), gamma drive (levels in **% activation**, matching the plot; optional sinusoidal γ-static with amplitude in % and phase in seconds), fiber kinetics, and transduction gains. Plots length, **activation (%)**, fiber forces, the receptor potential, **predicted firing**, and a **cross-bridge distribution scrubber**. Every panel is badged **INPUT / INTERMEDIATE / OUTPUT**. |
 
 ### Analysis Toolkit (Apply)
 

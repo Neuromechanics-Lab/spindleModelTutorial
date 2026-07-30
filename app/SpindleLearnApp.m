@@ -14,6 +14,8 @@ classdef SpindleLearnApp < SpindleAppBase
         tabPlay
         % Playground handles
         ctrl        = struct();   % parameter controls, keyed by sanitized name
+        ctrlDefault = struct();   % their starting values (for the Reset button)
+        ctrlCaption = struct();   % each slider's caption label + handle
         pgAxes      = struct();   % playground axes
         pgScrub                    % cross-bridge scrubber slider
         pgScrubLabel
@@ -30,6 +32,8 @@ classdef SpindleLearnApp < SpindleAppBase
         gwStep      = 1;
         gwSteps     = {};
         gwProgress
+        gwPrevBtn
+        gwNextBtn
         gwOut       = [];          % cached walkthrough sim (preset is fixed)
     end
 
@@ -97,12 +101,12 @@ classdef SpindleLearnApp < SpindleAppBase
             nav.Layout.Row = 2; nav.Layout.Column = [1 2];
             nav.ColumnWidth = {110, '1x', 110, 130};
             nav.Padding = [0 0 0 0]; nav.BackgroundColor = s.canvasDoc;
-            uibutton(nav, 'Text', '< Prev', 'FontWeight', 'bold', ...
+            obj.gwPrevBtn = uibutton(nav, 'Text', '< Prev', 'FontWeight', 'bold', ...
                 'BackgroundColor', [0.93 0.94 0.96], 'FontColor', s.navy, ...
                 'ButtonPushedFcn', @(src,e) obj.walkStep(-1));
             obj.gwProgress = uilabel(nav, 'Text', '', 'HorizontalAlignment', 'center', ...
                 'FontWeight', 'bold', 'FontColor', s.muted);
-            uibutton(nav, 'Text', 'Next >', 'FontWeight', 'bold', ...
+            obj.gwNextBtn = uibutton(nav, 'Text', 'Next >', 'FontWeight', 'bold', ...
                 'BackgroundColor', s.accent, 'FontColor', [1 1 1], ...
                 'ButtonPushedFcn', @(src,e) obj.walkStep(+1));
             uibutton(nav, 'Text', 'Go to Playground', ...
@@ -141,13 +145,18 @@ classdef SpindleLearnApp < SpindleAppBase
             sc.BackgroundColor = obj.S.card;
             row = 1;
 
-            % Run / live-update row
-            topRow = uigridlayout(sc, [1 2]); topRow.Layout.Row = row; row = row + 1;
-            topRow.ColumnWidth = {'1x','1x'}; topRow.Padding = [0 0 0 6];
+            % Run / reset / live-update row
+            topRow = uigridlayout(sc, [1 3]); topRow.Layout.Row = row; row = row + 1;
+            topRow.ColumnWidth = {'1.3x','0.9x','1x'}; topRow.Padding = [0 0 0 6];
+            topRow.ColumnSpacing = 6;
             topRow.BackgroundColor = obj.S.card;
             uibutton(topRow, 'Text', 'Run simulation', 'FontWeight', 'bold', ...
                 'BackgroundColor', obj.S.accent, 'FontColor', [1 1 1], ...
                 'ButtonPushedFcn', @(s,e) obj.runPlayground());
+            rb = uibutton(topRow, 'Text', 'Reset', ...
+                'BackgroundColor', [0.93 0.94 0.96], 'FontColor', obj.S.navy, ...
+                'ButtonPushedFcn', @(s,e) obj.resetPlayground());
+            rb.Tooltip = 'Restore every parameter to its starting value';
             obj.pgLiveChk = uicheckbox(topRow, 'Text', 'Live update', 'Value', true);
 
             % Length protocol (drives the MTU)
@@ -164,16 +173,16 @@ classdef SpindleLearnApp < SpindleAppBase
             row = obj.addSliderRow(sc, row, 'mtu_alphaLevel', '\alpha (extrafusal) activation (%)', 0, 100, 35);
             row = obj.addSliderRow(sc, row, 'mtu_tendonStiffness', 'Tendon stiffness', 1000, 20000, 5000);
 
-            % Gamma drive
-            row = obj.addPanelHeader(sc, row, 'Gamma drive  (lower pCa = stronger)');
+            % Gamma drive - in % activation, matching the Activation plot
+            row = obj.addPanelHeader(sc, row, 'Gamma drive  (% activation)');
             obj.ctrl.gamma_chainMode = obj.addDropdownRow(sc, row, '\gamma-static (chain) mode', ...
                 {'constant','sine'}, 'constant'); row = row + 1;
             row = obj.addSliderRow(sc, row, 'gamma_chainOn', 'Chain onset (s)', 0.0, 1.5, 0.3);
-            row = obj.addSliderRow(sc, row, 'gamma_chain_pCa', 'Chain pCa (level / sine offset)', 4.5, 9, 6.0);
-            row = obj.addSliderRow(sc, row, 'gamma_chain_amp', 'Chain sine amplitude (pCa) [sine]', 0, 2, 0.5);
+            row = obj.addSliderRow(sc, row, 'gamma_chainLevel_pct', 'Chain activation (%) [sine: mean]', 0, 100, 50);
+            row = obj.addSliderRow(sc, row, 'gamma_chainAmp_pct', 'Chain sine amplitude (%) [sine]', 0, 50, 20);
             row = obj.addSliderRow(sc, row, 'gamma_chain_freq', 'Chain sine frequency (Hz) [sine]', 0.25, 3, 1.0);
-            row = obj.addSliderRow(sc, row, 'gamma_chain_phase', 'Chain sine phase (rad) [sine]', -3.14, 3.14, 0.0);
-            row = obj.addSliderRow(sc, row, 'gamma_bagBurst', 'Bag / \gamma-dynamic burst pCa', 4.5, 9, 6.0);
+            row = obj.addSliderRow(sc, row, 'gamma_chainPhase_s', 'Chain sine phase (s after onset) [sine]', -1, 1, 0.0);
+            row = obj.addSliderRow(sc, row, 'gamma_bagBurst_pct', 'Bag / \gamma-dynamic burst activation (%)', 0, 100, 90);
             row = obj.addSliderRow(sc, row, 'gamma_bagOn', 'Bag burst onset (s)', 0.1, 1.5, 0.3);
             row = obj.addSliderRow(sc, row, 'gamma_bagOff', 'Bag burst offset (s)', 0.4, 2.5, 1.1);
 
@@ -255,6 +264,9 @@ classdef SpindleLearnApp < SpindleAppBase
             s.ValueChangingFcn = @(src,e) set(cap, 'Text', sprintf('%s = %.4g', label, e.Value));
             s.ValueChangedFcn  = @(src,e) obj.onParamChanged();
             obj.ctrl.(key) = s;
+            % Remember the starting value + its caption so Reset can restore both.
+            obj.ctrlDefault.(key) = val;
+            obj.ctrlCaption.(key) = struct('label', label, 'handle', cap);
             row = row + 1;
         end
 
@@ -271,6 +283,29 @@ classdef SpindleLearnApp < SpindleAppBase
             cb = uicheckbox(parent, 'Text', label, 'Value', false, ...
                 'ValueChangedFcn', @(src,e) obj.onParamChanged());
             cb.Layout.Row = row;
+        end
+
+        function resetPlayground(obj)
+            % Restore every control to the value it had when the tab was built,
+            % then re-run once so the plots match the controls again.
+            for f = fieldnames(obj.ctrlDefault)'
+                key = f{1};
+                obj.ctrl.(key).Value = obj.ctrlDefault.(key);
+                % refresh the "label = value" caption next to the slider
+                if isfield(obj.ctrlCaption, key)
+                    c = obj.ctrlCaption.(key);
+                    if isgraphics(c.handle)
+                        c.handle.Text = sprintf('%s = %.4g', c.label, obj.ctrlDefault.(key));
+                    end
+                end
+            end
+            % Non-slider controls
+            obj.ctrl.protocol_type.Value   = 'ramp-hold';
+            obj.ctrl.gamma_chainMode.Value = 'constant';
+            obj.ctrl.trans_occlusion.Value = false;
+            obj.updateProtocolEnable();
+            obj.updateChainModeEnable();
+            obj.runPlayground();
         end
 
         % ================================================================
@@ -306,9 +341,9 @@ classdef SpindleLearnApp < SpindleAppBase
 
         function updateChainModeEnable(obj)
             isSine = strcmp(obj.ctrl.gamma_chainMode.Value, 'sine');
-            obj.setEnable(obj.ctrl.gamma_chain_amp, isSine);
+            obj.setEnable(obj.ctrl.gamma_chainAmp_pct, isSine);
             obj.setEnable(obj.ctrl.gamma_chain_freq, isSine);
-            obj.setEnable(obj.ctrl.gamma_chain_phase, isSine);
+            obj.setEnable(obj.ctrl.gamma_chainPhase_s, isSine);
         end
 
         function p = gatherParams(obj)
@@ -322,15 +357,15 @@ classdef SpindleLearnApp < SpindleAppBase
             p.mtu.alphaLevel      = obj.ctrl.mtu_alphaLevel.Value;
             p.mtu.tendonStiffness = obj.ctrl.mtu_tendonStiffness.Value;
 
-            p.gamma.chainMode  = obj.ctrl.gamma_chainMode.Value;
-            p.gamma.chainOn    = obj.ctrl.gamma_chainOn.Value;
-            p.gamma.chain_pCa  = obj.ctrl.gamma_chain_pCa.Value;
-            p.gamma.chain_amp  = obj.ctrl.gamma_chain_amp.Value;
-            p.gamma.chain_freq = obj.ctrl.gamma_chain_freq.Value;
-            p.gamma.chain_phase = obj.ctrl.gamma_chain_phase.Value;
-            p.gamma.bagBurst  = obj.ctrl.gamma_bagBurst.Value;
-            p.gamma.bagOn     = obj.ctrl.gamma_bagOn.Value;
-            p.gamma.bagOff    = obj.ctrl.gamma_bagOff.Value;
+            p.gamma.chainMode      = obj.ctrl.gamma_chainMode.Value;
+            p.gamma.chainOn        = obj.ctrl.gamma_chainOn.Value;
+            p.gamma.chainLevel_pct = obj.ctrl.gamma_chainLevel_pct.Value;
+            p.gamma.chainAmp_pct   = obj.ctrl.gamma_chainAmp_pct.Value;
+            p.gamma.chain_freq     = obj.ctrl.gamma_chain_freq.Value;
+            p.gamma.chainPhase_s   = obj.ctrl.gamma_chainPhase_s.Value;
+            p.gamma.bagBurst_pct   = obj.ctrl.gamma_bagBurst_pct.Value;
+            p.gamma.bagOn          = obj.ctrl.gamma_bagOn.Value;
+            p.gamma.bagOff         = obj.ctrl.gamma_bagOff.Value;
 
             p.bag.f         = obj.ctrl.bag_f.Value;
             p.bag.g         = obj.ctrl.bag_g.Value;
@@ -463,8 +498,7 @@ classdef SpindleLearnApp < SpindleAppBase
                 '  - PRE-stretch: a modest population centred near x = 0.', ...
                 '  - EARLY stretch: the whole distribution is dragged to positive x (force rises fast).', ...
                 '  - POST-stretch (hold): kinetics relax it toward a new steady state (force adapts).', '', ...
-                'Stretch SHIFTS the distribution; attachment/detachment kinetics RELAX it. That', ...
-                'interplay is the mechanistic heart of the model.'}});
+                'Stretch SHIFTS the distribution; attachment/detachment kinetics bring it back.'}});
             steps{end+1} = struct('kind', 'receptor', ...
                 'title', 'From fiber force (and yank) to the receptor potential', ...
                 'text', {{'The Ia afferent wraps around the fibers and senses their force. The model converts', ...
@@ -473,8 +507,7 @@ classdef SpindleLearnApp < SpindleAppBase
                 '  r_d (dynamic, orange) = gain x BAG force  +  gain x BAG YANK', '', ...
                 '"YANK" is the time-derivative of force, dF/dt (third panel). The bag force rises', ...
                 'sharply during the ramp, so its yank SPIKES - and that spike drives the big transient', ...
-                'in r_d. This is why real Ia afferents fire a burst at movement onset and are so', ...
-                'velocity-sensitive.', '', ...
+                'in r_d.', '', ...
                 'Total r = r_s + r_d (black, bottom panel).'}});
             steps{end+1} = struct('kind', 'firing', ...
                 'title', 'From receptor potential to firing', ...
@@ -507,10 +540,10 @@ classdef SpindleLearnApp < SpindleAppBase
             p.protocol.amplitude_pct = 8;
             p.protocol.perturbStart = 0.6;
             p.protocol.rampDur      = 1.0;
-            p.gamma.bagBurst        = 5.8;
+            p.gamma.bagBurst_pct    = 92;    % % activation
             p.gamma.bagOn           = 0.2;
             p.gamma.bagOff          = 2.3;
-            p.gamma.chain_pCa       = 6.0;
+            p.gamma.chainLevel_pct  = 50;
             p.gamma.chainOn         = 0.2;
         end
 
@@ -525,6 +558,9 @@ classdef SpindleLearnApp < SpindleAppBase
             obj.gwTitle.Text = sprintf('Step %d/%d:  %s', k, numel(obj.gwSteps), step.title);
             obj.gwText.Value = step.text;
             obj.gwProgress.Text = sprintf('%d / %d', k, numel(obj.gwSteps));
+            % Grey out navigation at the ends of the tour.
+            obj.setEnable(obj.gwPrevBtn, k > 1);
+            obj.setEnable(obj.gwNextBtn, k < numel(obj.gwSteps));
 
             % The preset is the same for every step, so simulate once and reuse.
             if isempty(obj.gwOut)

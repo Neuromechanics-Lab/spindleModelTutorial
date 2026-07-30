@@ -50,7 +50,7 @@ end
 
 % ---- 3. Gamma-static onset + sinusoid --------------------------------
 pS = defaultTutorialParams();
-pS.gamma.chainMode = 'sine'; pS.gamma.chainOn = 0.6; pS.gamma.chain_amp = 0.6;
+pS.gamma.chainMode = 'sine'; pS.gamma.chainOn = 0.6; pS.gamma.chainAmp_pct = 25;
 oS = tutorialForwardSim(pS);
 nfail = nfail + check('chain silent before its onset', all(oS.pCaC(1:500) > 8.9));
 nfail = nfail + check('chain drive active after onset', min(oS.pCaC(700:end)) < 8);

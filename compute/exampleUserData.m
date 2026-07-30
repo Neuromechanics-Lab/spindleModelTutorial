@@ -9,7 +9,9 @@ function d = exampleUserData()
 %   It also shows exactly what fields a user's own .mat should contain.
 
 p = defaultTutorialParams(); p.sim.tEnd = 1.8;
-p.gamma.chain_pCa = 6.2; p.gamma.bagBurst = 5.8; p.gamma.bagOn = 0.35; p.gamma.bagOff = 1.15;
+% (% activation; ~pCa 6.2 and 5.8 on the chain/bag curves respectively)
+p.gamma.chainLevel_pct = 34; p.gamma.bagBurst_pct = 92;
+p.gamma.bagOn = 0.35; p.gamma.bagOff = 1.15;
 ref = tutorialForwardSim(p);
 
 t = ref.t;
