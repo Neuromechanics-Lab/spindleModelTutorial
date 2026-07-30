@@ -12,6 +12,7 @@ classdef SpindleToolkitApp < SpindleAppBase
         optCtrl     = struct();
         optAxFit
         optAxCost
+        optCostLine                % live-updated line on optAxCost
         optAxGammaS
         optAxGammaD
         optRunBtn
@@ -61,17 +62,31 @@ classdef SpindleToolkitApp < SpindleAppBase
             r = 1;
             lbl = uilabel(cg, 'Text', ['Recover fusimotor (gamma) drive from a simulated Ia, using the ' ...
                 'manuscript B-spline pipeline (runSpindleSimForOpt_Bspline_5cp). A sinusoidal gait-cycle ' ...
-                'MTU drives the fascicle; the fit recovers the gamma-static B-spline (5 control points), ' ...
-                'the bag burst magnitude, and its phase.'], 'WordWrap', 'on');
+                'MTU drives the fascicle; the fit recovers the gamma-static waveform (5 B-spline control ' ...
+                'points), the bag burst magnitude, and the waveform phase - 7 parameters in all.'], ...
+                'WordWrap', 'on');
             lbl.Layout.Row = r; lbl.Layout.Column = [1 2]; r = r + 1;
 
-            hdr = uilabel(cg, 'Text', 'TRUE bag burst (make the target)', 'FontWeight', 'bold');
+            hdr = uilabel(cg, 'Text', 'TRUE drive (makes the target)', 'FontWeight', 'bold');
             hdr.Layout.Row = r; hdr.Layout.Column = [1 2]; r = r + 1;
-            obj.optCtrl.trueBag = obj.addOptSpinner(cg, r, 'Bag burst pCa (true)', 4.5, 9, 5.5); r = r + 1;
+            % Chain (gamma-static) is a 5-point waveform, so offer shapes rather
+            % than five separate boxes. Change it to ask "can a DIFFERENT shape
+            % still be recovered?" - the interesting question here.
+            l = uilabel(cg, 'Text', 'gamma-static shape (chain)');
+            l.Layout.Row = r; l.Layout.Column = 1;
+            obj.optCtrl.trueShape = uidropdown(cg, 'Items', obj.chainShapeNames(), ...
+                'Value', 'manuscript default');
+            obj.optCtrl.trueShape.Layout.Row = r; obj.optCtrl.trueShape.Layout.Column = 2;
+            obj.optCtrl.trueShape.Tooltip = ['The true gamma-static waveform to recover. ' ...
+                'Try a different shape to see whether the fit still finds it.'];
+            r = r + 1;
+            obj.optCtrl.trueBag = obj.addOptSpinner(cg, r, ...
+                'gamma-dynamic burst (% act.)', 0, 100, 92); r = r + 1;
 
-            hdr = uilabel(cg, 'Text', 'INITIAL guess (start the search)', 'FontWeight', 'bold');
+            hdr = uilabel(cg, 'Text', 'INITIAL guess (starts the search)', 'FontWeight', 'bold');
             hdr.Layout.Row = r; hdr.Layout.Column = [1 2]; r = r + 1;
-            obj.optCtrl.x0Bag = obj.addOptSpinner(cg, r, 'Bag burst pCa (guess)', 4.5, 9, 7.0); r = r + 1;
+            obj.optCtrl.x0Bag = obj.addOptSpinner(cg, r, ...
+                'gamma-dynamic burst (% act.)', 0, 100, 38); r = r + 1;
 
             obj.optCtrl.tEnd    = obj.addOptSpinner(cg, r, 'Sim duration (s)', 1.0, 3.0, 1.9); r = r + 1;
             obj.optCtrl.maxIter = obj.addOptSpinner(cg, r, 'Max iterations', 5, 40, 12); r = r + 1;
@@ -105,19 +120,51 @@ classdef SpindleToolkitApp < SpindleAppBase
 
             % Plots + table
             ppanel = obj.card(g); ppanel.Layout.Column = 2;
-            pg = uigridlayout(ppanel, [3 2]); pg.RowHeight = {'1x','1x', 110};
+            % Keep the table OUT of the axes grid. Sharing one grid between
+            % uiaxes and a uitable renders the axes blank once plotting adds
+            % legends (which become extra, unpinnable grid children). Two nested
+            % grids keep the axes in a grid of their own, as the playground does.
+            outer = uigridlayout(ppanel, [2 1]);
+            outer.RowHeight = {'1x', 110};
+            outer.RowSpacing = 8; outer.Padding = [0 0 0 0];
+            outer.BackgroundColor = obj.S.card;
+            pg = uigridlayout(outer, [2 2]);
+            pg.Layout.Row = 1; pg.Layout.Column = 1;
+            pg.RowHeight = {'1x','1x'}; pg.Padding = [0 0 0 0];
             pg.RowSpacing = 8; pg.ColumnSpacing = 10; pg.BackgroundColor = obj.S.card;
             obj.optAxFit   = uiaxes(pg); obj.optAxFit.Layout.Row = 1;   obj.optAxFit.Layout.Column = 1;
             obj.optAxGammaS = uiaxes(pg); obj.optAxGammaS.Layout.Row = 1; obj.optAxGammaS.Layout.Column = 2;
             obj.optAxCost  = uiaxes(pg); obj.optAxCost.Layout.Row = 2;  obj.optAxCost.Layout.Column = 1;
             obj.optAxGammaD = uiaxes(pg); obj.optAxGammaD.Layout.Row = 2; obj.optAxGammaD.Layout.Column = 2;
-            obj.optTable  = uitable(pg, 'ColumnName', {'Parameter','True','Initial','Recovered','Recovery %'});
-            obj.optTable.Layout.Row = 3; obj.optTable.Layout.Column = [1 2];
+            obj.optTable  = uitable(outer, 'ColumnName', {'Parameter','True','Initial','Recovered','Recovery %'});
+            obj.optTable.Layout.Row = 2; obj.optTable.Layout.Column = 1;
             title(obj.optAxFit,    'Target Ia vs model fit  (press Run optimization)');
             title(obj.optAxCost,   'Cost vs iteration');
+            xlabel(obj.optAxCost, 'iteration'); ylabel(obj.optAxCost, 'RMSE cost');
+            % Build the cost line ONCE and update its data each iteration. Doing
+            % cla + beautify + drawnow every iteration corrupts the uifigure
+            % render tree and blanks every axes on the tab (all three together
+            % are needed to trigger it), so never rebuild this plot in the loop.
+            obj.optCostLine = plot(obj.optAxCost, NaN, NaN, '-o', 'LineWidth', 1.6, ...
+                'Color', obj.S.accent, 'MarkerFaceColor', obj.S.accent, 'MarkerSize', 4);
             title(obj.optAxGammaS, 'Recovered \gamma-static (chain)');
             title(obj.optAxGammaD, 'Recovered \gamma-dynamic (bag burst)');
             obj.beautify(ppanel);
+        end
+
+        function names = chainShapeNames(~)
+            s = SpindleToolkitApp.chainShapes();
+            names = fieldnames(s)';
+            names = cellfun(@(f) s.(f).name, names, 'UniformOutput', false);
+        end
+
+        function cp = chainShapeByName(~, nm)
+            % Look up a preset's 5 control points, in % activation.
+            s = SpindleToolkitApp.chainShapes();
+            for f = fieldnames(s)'
+                if strcmp(s.(f{1}).name, nm), cp = s.(f{1}).cp_pct; return; end
+            end
+            cp = s.manuscript.cp_pct;
         end
 
         function spn = addOptSpinner(~, parent, row, label, lo, hi, val)
@@ -132,15 +179,23 @@ classdef SpindleToolkitApp < SpindleAppBase
             obj.optRunBtn.Enable = 'off';
             drawnow;
             try
+                % The GUI speaks % activation (as the rest of the tutorial does);
+                % the optimizer fits pCa natively, exactly as the manuscript
+                % does. Convert at this boundary only.
+                ac = loadActivationCurve();
+                pct2pcaB = @(v) ac.actToPcaB(min(max(v/100, 0), 1));
+                pct2pcaC = @(v) ac.actToPcaC(min(max(v/100, 0), 1));
+
                 opts = struct();
-                opts.trueBagPca  = obj.optCtrl.trueBag.Value;
-                opts.bag0        = obj.optCtrl.x0Bag.Value;
+                opts.trueBagPca  = pct2pcaB(obj.optCtrl.trueBag.Value);
+                opts.bag0        = pct2pcaB(obj.optCtrl.x0Bag.Value);
+                opts.trueCP      = pct2pcaC(obj.chainShapeByName(obj.optCtrl.trueShape.Value));
                 opts.tEnd        = obj.optCtrl.tEnd.Value;
                 opts.maxIter     = round(obj.optCtrl.maxIter.Value);
                 opts.useParallel = obj.optCtrl.parallel.Value;
 
                 % Prime the cost plot; live-update via iterFcn.
-                cla(obj.optAxCost);
+                set(obj.optCostLine, 'XData', NaN, 'YData', NaN);
                 obj.optCostIters = [];
                 obj.optCostVals  = [];
                 opts.iterFcn = @(info) obj.onOptIter(info);
@@ -160,11 +215,7 @@ classdef SpindleToolkitApp < SpindleAppBase
         function onOptIter(obj, info)
             obj.optCostIters(end+1) = info.iter;
             obj.optCostVals(end+1)  = info.fval;
-            ax = obj.optAxCost; cla(ax);
-            plot(ax, obj.optCostIters, obj.optCostVals, '-o', 'LineWidth', 1.6, ...
-                'Color', obj.S.accent, 'MarkerFaceColor', obj.S.accent, 'MarkerSize', 4);
-            title(ax, 'Cost vs iteration'); xlabel(ax, 'iteration'); ylabel(ax, 'RMSE cost');
-            obj.beautify(ax.Parent);
+            set(obj.optCostLine, 'XData', obj.optCostIters, 'YData', obj.optCostVals);
             obj.optStatus.Text = sprintf('Optimizing... iter %d, cost %.4g', info.iter, info.fval);
             drawnow;
         end
@@ -183,37 +234,56 @@ classdef SpindleToolkitApp < SpindleAppBase
             legend(ax, {'target (truth)','initial guess','optimized fit'}, 'Location', 'best', 'FontSize', 8);
             obj.padY(ax, [res.target(:); res.fit0(:); res.fitOpt(:)]);
 
+            % Everything is shown in % activation, to match the rest of the
+            % tutorial. The fit itself ran in pCa (the model's own variable).
+            ac = loadActivationCurve();
+            pcaC2pct = @(v) 100 * min(max(ac.pCaToActC(v), 0), 1);
+            pcaB2pct = @(v) 100 * min(max(ac.pCaToActB(v), 0), 1);
+
             % Recovered gamma-static (chain) waveform + control points
             gT = res.gammaTrue; gO = res.gammaOpt;
             ax = obj.optAxGammaS; cla(ax);
-            plot(ax, gT.t, gT.chainPca, '--', 'Color', grey, 'LineWidth', 1.5); hold(ax, 'on');
-            plot(ax, gO.t, gO.chainPca, '-', 'Color', s.chain, 'LineWidth', 1.8);
-            plot(ax, gT.controlTimes, gT.controlPca, 'o', 'MarkerSize', 7, ...
+            plot(ax, gT.t, pcaC2pct(gT.chainPca), '--', 'Color', grey, 'LineWidth', 1.5); hold(ax, 'on');
+            plot(ax, gO.t, pcaC2pct(gO.chainPca), '-', 'Color', s.chain, 'LineWidth', 1.8);
+            plot(ax, gT.controlTimes, pcaC2pct(gT.controlPca), 'o', 'MarkerSize', 7, ...
                 'MarkerFaceColor', [0.6 0.6 0.6], 'MarkerEdgeColor', grey);
-            plot(ax, gO.controlTimes, gO.controlPca, 'o', 'MarkerSize', 7, ...
+            plot(ax, gO.controlTimes, pcaC2pct(gO.controlPca), 'o', 'MarkerSize', 7, ...
                 'Color', s.chain, 'MarkerFaceColor', s.chain);
-            hold(ax, 'off'); set(ax, 'YDir', 'reverse');
+            hold(ax, 'off');
             title(ax, 'Recovered \gamma-static (chain)');
-            xlabel(ax, 'time (s)'); ylabel(ax, 'pCa');
+            xlabel(ax, 'time (s)'); ylabel(ax, 'activation (%)');
             legend(ax, {'true','recovered','true CP','recovered CP'}, 'Location', 'best', 'FontSize', 8);
 
             % Recovered gamma-dynamic (bag burst)
             ax = obj.optAxGammaD; cla(ax);
-            plot(ax, gT.t, gT.bagPca, '--', 'Color', grey, 'LineWidth', 1.5); hold(ax, 'on');
-            plot(ax, gO.t, gO.bagPca, '-', 'Color', s.bag, 'LineWidth', 1.8);
-            hold(ax, 'off'); set(ax, 'YDir', 'reverse');
+            plot(ax, gT.t, pcaB2pct(gT.bagPca), '--', 'Color', grey, 'LineWidth', 1.5); hold(ax, 'on');
+            plot(ax, gO.t, pcaB2pct(gO.bagPca), '-', 'Color', s.bag, 'LineWidth', 1.8);
+            hold(ax, 'off');
             title(ax, 'Recovered \gamma-dynamic (bag burst)');
-            xlabel(ax, 'time (s)'); ylabel(ax, 'pCa');
+            xlabel(ax, 'time (s)'); ylabel(ax, 'activation (%)');
             legend(ax, {'true','recovered'}, 'Location', 'best', 'FontSize', 8);
 
-            % Table (all fitted parameters)
+            % Table (all 7 fitted parameters), converted to the displayed units:
+            % activation % for the drive levels, seconds for the phase. Recovery
+            % is then recomputed in those same units so the row reads honestly.
+            labels = {'Bag burst (% act.)', 'Chain CP1 @0% (% act.)', ...
+                      'Chain CP2 @20% (% act.)', 'Chain CP3 @40% (% act.)', ...
+                      'Chain CP4 @60% (% act.)', 'Chain CP5 @80% (% act.)', ...
+                      'Waveform phase (s)'};
             data = cell(numel(res.names), 5);
             for i = 1:numel(res.names)
-                data{i,1} = res.labels{i};
-                data{i,2} = round(res.xTrue(i), 3);
-                data{i,3} = round(res.x0(i), 3);
-                data{i,4} = round(res.xOpt(i), 3);
-                data{i,5} = round(res.recoveryPct(i), 1);
+                switch res.names{i}
+                    case 'bagPca',                  cv = pcaB2pct; span = 100;
+                    case {'cp1','cp2','cp3','cp4','cp5'}, cv = pcaC2pct; span = 100;
+                    otherwise                       % phase, already in seconds
+                        cv = @(v) v; span = res.ub(i) - res.lb(i);
+                end
+                tv = cv(res.xTrue(i)); iv = cv(res.x0(i)); ov = cv(res.xOpt(i));
+                data{i,1} = labels{i};
+                data{i,2} = round(tv, 2);
+                data{i,3} = round(iv, 2);
+                data{i,4} = round(ov, 2);
+                data{i,5} = round(100 * (1 - abs(ov - tv) / span), 1);
             end
             obj.optTable.Data = data;
             obj.beautify(obj.optAxFit.Parent);
@@ -460,6 +530,18 @@ classdef SpindleToolkitApp < SpindleAppBase
     end
 
     methods (Static)
+        function s = chainShapes()
+            % Preset TRUE gamma-static waveforms, as the 5 B-spline control
+            % points at 0/20/40/60/80% of the gait cycle, in % ACTIVATION.
+            % "manuscript default" is the waveform used elsewhere in the tutorial
+            % (equivalent to pCa [6.8 5.6 6.0 6.6 7.2]).
+            s.manuscript = struct('name', 'manuscript default', 'cp_pct', [10 77 49 14  3]);
+            s.flat       = struct('name', 'flat (constant)',    'cp_pct', [50 50 50 50 50]);
+            s.single     = struct('name', 'single peak',        'cp_pct', [10 20 80 25 10]);
+            s.double     = struct('name', 'double peak',        'cp_pct', [75 20 70 20 45]);
+            s.ramp       = struct('name', 'ramp up',            'cp_pct', [ 5 25 45 65 85]);
+        end
+
         function s = userDataHTML()
             s = [ ...
 '<html><head><style>', ...

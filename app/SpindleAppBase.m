@@ -53,9 +53,11 @@ classdef SpindleAppBase < handle
                     lg = ax.Legend;
                     if ~isempty(lg)
                         lg.Box = 'off'; lg.FontSize = s.legendFont; lg.TextColor = s.axisTxt;
-                        % A legend inside a uigridlayout becomes a grid child and
-                        % steals a cell, collapsing stacked layouts. Pin it into
-                        % its own axes' cell so the row grid stays intact.
+                        % A legend inside a uigridlayout becomes an extra grid
+                        % child. It usually reports a plain LayoutOptions (no
+                        % Row/Column), so it cannot be pinned - hence the isa
+                        % guard, and hence: never mix uiaxes and other widgets
+                        % in one grid, give the axes a grid of their own.
                         if isa(ax.Parent, 'matlab.ui.container.GridLayout') && ...
                            isa(lg.Layout, 'matlab.ui.layout.GridLayoutOptions')
                             lg.Layout.Row = ax.Layout.Row;
