@@ -33,7 +33,8 @@ function result = runOptFromData(d, opts)
 %   reused on every objective evaluation.
 %
 %   opts (optional): .maxIter (default 20), .iterFcn (callback for live updates),
-%   .fitTarget ('receptor' | 'firing', default 'receptor').
+%   .fitTarget ('receptor' | 'firing', default 'receptor'),
+%   .solver ('fmincon' | 'patternsearch', default 'fmincon').
 %
 %   result fields: .t, .target, .fit0, .fitOpt (on the user grid, in whatever
 %   quantity was fitted), .fitTarget, .fitUnits,
@@ -46,6 +47,19 @@ n  = d.n;
 maxIter   = getOpt(opts, 'maxIter', 20);
 iterFcn   = getOpt(opts, 'iterFcn', []);
 fitTarget = lower(getOpt(opts, 'fitTarget', 'receptor'));
+% Solver. fmincon is the DEFAULT here (fast, and adequate on this compact
+% 4-parameter fit). patternsearch is what the manuscript uses and is usually the
+% better search - derivative-free, so it copes with the stepped cost you get in
+% 'firing' mode - but it polls 2N points per iteration, so it is slower. Worth
+% switching to if a fit looks like it stalled.
+solver = lower(getOpt(opts, 'solver', 'fmincon'));
+if ~ismember(solver, {'fmincon','patternsearch'})
+    error('runOptFromData:badSolver', ...
+        'opts.solver must be ''fmincon'' or ''patternsearch'' (got ''%s'').', solver);
+end
+if strcmp(solver, 'patternsearch') && isempty(which('patternsearch'))
+    solver = 'fmincon';   % Global Optimization Toolbox absent
+end
 if ~ismember(fitTarget, {'receptor','firing'})
     error('runOptFromData:badFitTarget', ...
         'opts.fitTarget must be ''receptor'' or ''firing'' (got ''%s'').', fitTarget);
@@ -125,6 +139,17 @@ labels = {'Chain pCa (\gamma-static)','Bag burst pCa (\gamma-dynamic)', ...
           'Bag burst onset (s)','Bag burst offset (s)'};
 
 history = struct('iter', {}, 'fval', {}, 'x', {});
+    function [stop, o2, chg] = psout(ov, o2, flag)
+        stop = false; chg = false;
+        if strcmp(flag, 'iter')
+            history(end+1) = struct('iter', ov.iteration, 'fval', ov.fval, 'x', ov.x(:)');
+            if ~isempty(iterFcn)
+                iterFcn(struct('iter', ov.iteration, 'fval', ov.fval, ...
+                               'x', ov.x(:)', 'names', {names}));
+            end
+        end
+    end
+
     function stop = outfun(x, ov, state)
         stop = false;
         if strcmp(state, 'iter')
@@ -135,12 +160,20 @@ history = struct('iter', {}, 'fval', {}, 'x', {});
         end
     end
 
-options = optimoptions('fmincon', 'Algorithm', 'sqp', 'Display', 'off', ...
-    'MaxIterations', maxIter, 'MaxFunctionEvaluations', 800, ...
-    'FiniteDifferenceStepSize', 1e-2, 'OutputFcn', @outfun);
-
 fval0 = objective(x0);
-[xOpt, fvalOpt] = fmincon(@objective, x0, [], [], [], [], lb, ub, [], options);
+switch solver
+    case 'patternsearch'
+        psOpts = optimoptions('patternsearch', 'Display', 'off', ...
+            'MaxIterations', maxIter, 'MaxFunctionEvaluations', 800, ...
+            'OutputFcn', @psout, 'UseCompletePoll', true);
+        [xOpt, fvalOpt] = patternsearch(@objective, x0, [], [], [], [], lb, ub, [], psOpts);
+    otherwise
+        options = optimoptions('fmincon', 'Algorithm', 'sqp', 'Display', 'off', ...
+            'MaxIterations', maxIter, 'MaxFunctionEvaluations', 800, ...
+            'FiniteDifferenceStepSize', 1e-2, 'OutputFcn', @outfun);
+        [xOpt, fvalOpt] = fmincon(@objective, x0, [], [], [], [], lb, ub, [], options);
+end
+result.solver = solver;
 
 [sig0, ~]    = modelSignal(x0);
 [sigOpt, oO] = modelSignal(xOpt);

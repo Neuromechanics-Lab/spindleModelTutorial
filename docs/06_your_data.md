@@ -123,6 +123,18 @@ If you want the spike generator in the loop anyway, switch **Optimize by fitting
 to *firing rate* in the app, or pass `opts.fitTarget = 'firing'` in code. The cost
 is mean-normalized in both cases.
 
+### Solver
+
+`opts.solver` (and the app's **Solver** dropdown) chooses between:
+
+- **`'fmincon'`** (default) — faster, and it converges better on this compact
+  four-parameter fit. On the built-in example: cost 0.395 → 0.101.
+- **`'patternsearch'`** — what the manuscript uses. Derivative-free, so it copes
+  better with the stepped cost you get in `'firing'` mode, and worth trying if a
+  fit looks like it stalled. Slower per iteration (it polls 2N points), so it
+  needs a larger `maxIter`: at 12 it undershoots (cost 0.395 → 0.243) in a third
+  of the time.
+
 > The built-in example's `targetFiring` is generated as a rectified-linear function
 > of `r` (`rate = a*(r - threshold)`), not by running the toolbox spike generator —
 > which would clip 65–90% of the trace at 250 spikes/s and make the example

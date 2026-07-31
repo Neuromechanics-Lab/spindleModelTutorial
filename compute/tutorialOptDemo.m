@@ -83,7 +83,10 @@ ub = [9.0, 9.0*ones(1,5),  cycle_period/2];
 % docs/07_differences_from_manuscript.md.
 maxIter     = getOpt(opts, 'maxIter', 25);
 iterFcn     = getOpt(opts, 'iterFcn', []);
-useParallel = getOpt(opts, 'useParallel', false);  % parallel finite differences
+useParallel = getOpt(opts, 'useParallel', false);  % parallel polls / differences
+if useParallel && ~hasParallelToolbox()
+    useParallel = false;   % Parallel Computing Toolbox absent - run serial
+end
 % Solver. The manuscript uses PATTERNSEARCH ("derivative-free; reliable on the
 % stepped cost"), so that is the default here too. fmincon/sqp is offered for
 % comparison - on this cost it tends to stall on the weakly-identified chain

@@ -101,16 +101,30 @@ fprintf('Saved results to %s\n', tempdir);
 % proportional, and a proportional factor is exactly what normalisation removes.
 % It also keeps the generator's 250 spikes/s ceiling out of the objective.
 %
-% To fit model FIRING instead, pass fitTarget = 'firing'. See
-% docs/06_your_data.md and compute/meanNormRMSE.m.
+% Two options you can pass (both also exposed in the app's Your-data tab):
+%
+%   fitTarget : 'receptor' (default) fits the model's r to your recorded rate.
+%               'firing' pushes the model through integrateAndFire_v2 first -
+%               which saturates at 250 spikes/s at dt = 1 ms, so the objective
+%               goes flat wherever the model is pinned.
+%   solver    : 'fmincon' (default) is faster and converges well on this compact
+%               4-parameter fit. 'patternsearch' is the manuscript's solver -
+%               derivative-free, so it copes better with the stepped cost you
+%               get in 'firing' mode. Worth trying if a fit looks stalled.
+%
+% See docs/06_your_data.md and compute/meanNormRMSE.m.
 %
 %   data2 = struct('t', t, 'mtuLength', mtuLength, 'restingLength', restingLength, ...
 %                  'alphaAct', alphaAct, 'targetFiring', targetFiring);
 %   save(fullfile(tempdir,'myFit.mat'), '-struct', 'data2');
 %   d2  = loadUserData(fullfile(tempdir,'myFit.mat'));
-%   res = runOptFromData(d2, struct('maxIter', 20));            % fits r (default)
-%   % res = runOptFromData(d2, struct('maxIter', 20, 'fitTarget', 'firing'));
-%   fprintf('fitted %s | cost %.3g -> %.3g\n', res.fitTarget, res.fval0, res.fvalOpt);
+%   res = runOptFromData(d2, struct('maxIter', 20));   % fits r, fmincon
+%   % ... or spell both out:
+%   % res = runOptFromData(d2, struct('maxIter', 20, ...
+%   %                                 'fitTarget', 'firing', ...
+%   %                                 'solver',    'patternsearch'));
+%   fprintf('fitted %s with %s | cost %.3g -> %.3g\n', ...
+%           res.fitTarget, res.solver, res.fval0, res.fvalOpt);
 %   for i = 1:numel(res.names)
 %       fprintf('  %-32s %.3f\n', res.labels{i}, res.xOpt(i));
 %   end

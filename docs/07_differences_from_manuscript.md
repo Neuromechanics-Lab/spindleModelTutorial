@@ -92,12 +92,20 @@ from 12 to 25 iterations to compensate:
 
 | | before | now |
 |---|---|---|
-| Gamma optimization | 78 s (fmincon, 12 iter) | **228 s** (patternsearch, 25) |
-| Your data, optimize | 64 s (firing) | **134 s** (receptor, the new default) |
+| Gamma optimization | 78 s (fmincon, 12 iter, serial) | **88 s** (patternsearch, 25, **parallel** — on by default) |
+| — same, serial | | 228 s |
+| Your data, optimize | 64 s (firing, fmincon) | **134 s** (receptor, fmincon — the new default) |
 
-Both are still far below the manuscript's own budget (200 iterations / 400
-evaluations per node, at 245 nodes). `opts.solver = 'fmincon'` and a lower
-`maxIter` trade accuracy back for speed.
+Parallel is worth 2.6× on the gamma fit, because patternsearch's 2N poll points
+are independent; the first run pays a one-off ~45 s pool startup. Both fits are
+still far below the manuscript's own budget (200 iterations / 400 evaluations per
+node, at 245 nodes).
+
+The two tabs default to *different* solvers, deliberately. The gamma demo uses
+patternsearch (the manuscript's, and it reaches a ~4× lower cost here than
+fmincon); the Your-data tab uses fmincon, which converges better on its compact
+four-parameter fit. Both are switchable — `opts.solver`, or the **Solver**
+dropdown.
 
 ## What this costs you
 
