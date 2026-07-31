@@ -76,9 +76,22 @@ gDynOff = getOpt(opts, 'gDynOff', 60);
 
 lb = [4.5, 4.5*ones(1,5), -cycle_period/2];
 ub = [9.0, 9.0*ones(1,5),  cycle_period/2];
-maxIter     = getOpt(opts, 'maxIter', 12);
+% patternsearch polls 2N points per iteration, so it needs more iterations than
+% fmincon did. The manuscript allows 200 iterations / 400 evaluations per grid
+% node; this default is smaller so an interactive fit still finishes in a couple
+% of minutes - one of the differences listed in
+% docs/07_differences_from_manuscript.md.
+maxIter     = getOpt(opts, 'maxIter', 25);
 iterFcn     = getOpt(opts, 'iterFcn', []);
 useParallel = getOpt(opts, 'useParallel', false);  % parallel finite differences
+% Solver. The manuscript uses PATTERNSEARCH ("derivative-free; reliable on the
+% stepped cost"), so that is the default here too. fmincon/sqp is offered for
+% comparison - on this cost it tends to stall on the weakly-identified chain
+% control points, whose gradient is small next to the bag's.
+solver = lower(getOpt(opts, 'solver', 'patternsearch'));
+if strcmp(solver, 'patternsearch') && isempty(which('patternsearch'))
+    solver = 'fmincon';   % Global Optimization Toolbox absent
+end
 
 % -- Activation interpolants (chain) -----------------------------------
 ac = loadActivationCurve();
@@ -139,6 +152,18 @@ mtData = mt.mtData;
 
 % -- History + optimize -------------------------------------------------
 history = struct('iter', {}, 'fval', {}, 'x', {});
+    function [stop, opts2, chg] = psout(optimValues, opts2, flag)
+        stop = false; chg = false;
+        if strcmp(flag, 'iter')
+            history(end+1) = struct('iter', optimValues.iteration, ...
+                'fval', optimValues.fval, 'x', optimValues.x(:)');
+            if ~isempty(iterFcn)
+                iterFcn(struct('iter', optimValues.iteration, 'fval', optimValues.fval, ...
+                               'x', optimValues.x(:)', 'names', {names}));
+            end
+        end
+    end
+
     function stop = outfun(x, ov, state)
         stop = false;
         if strcmp(state, 'iter')
@@ -150,13 +175,22 @@ history = struct('iter', {}, 'fval', {}, 'x', {});
         end
     end
 
-options = optimoptions('fmincon', 'Algorithm', 'sqp', 'Display', 'off', ...
-    'MaxIterations', maxIter, 'MaxFunctionEvaluations', 2000, ...
-    'FiniteDifferenceStepSize', 1e-2, 'OutputFcn', @outfun, ...
-    'UseParallel', useParallel);
-
 fval0 = objective(x0);
-[xOpt, fvalOpt] = fmincon(@objective, x0, [], [], [], [], lb, ub, [], options);
+switch solver
+    case 'patternsearch'
+        psOpts = optimoptions('patternsearch', 'Display', 'off', ...
+            'MaxIterations', maxIter, 'MaxFunctionEvaluations', 2000, ...
+            'OutputFcn', @psout, 'UseParallel', useParallel, ...
+            'UseCompletePoll', true);
+        [xOpt, fvalOpt] = patternsearch(@objective, x0, [], [], [], [], lb, ub, [], psOpts);
+    otherwise
+        options = optimoptions('fmincon', 'Algorithm', 'sqp', 'Display', 'off', ...
+            'MaxIterations', maxIter, 'MaxFunctionEvaluations', 2000, ...
+            'FiniteDifferenceStepSize', 1e-2, 'OutputFcn', @outfun, ...
+            'UseParallel', useParallel);
+        [xOpt, fvalOpt] = fmincon(@objective, x0, [], [], [], [], lb, ub, [], options);
+end
+result.solver = solver;
 
 % -- Traces for plotting ------------------------------------------------
 [t0, fit0]     = simulate(x0);

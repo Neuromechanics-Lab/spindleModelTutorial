@@ -78,6 +78,16 @@ So the app plots `r`, and **`examples/spikesFromReceptorPotential.m`** gives a
 worked spike generator you can adapt: it runs on any simulation, checks for
 saturation, and explains what to change.
 
+## Differences from the manuscript
+
+The tutorial calls the *same* model functions the manuscript does (vendored
+verbatim in `vendor/`), but the workflow around them is simplified — most
+importantly, the gamma-optimization demo fits a **simulated** target driven by a
+**synthetic** sinusoidal MTU, with burst timing **fixed** rather than searched
+over an outer 7×7 + 5×5 grid. Every known difference, and what each costs, is
+listed in
+[docs/07_differences_from_manuscript.md](docs/07_differences_from_manuscript.md).
+
 ## Requirements
 
 **Just clone and run** — the model code this tutorial needs is included (see

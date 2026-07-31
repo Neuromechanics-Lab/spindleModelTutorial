@@ -95,7 +95,7 @@ classdef SpindleToolkitApp < SpindleAppBase
 
             obj.optCtrl.tEnd    = obj.addOptSpinner(cg, r, 'Sim duration (s)', 1.0, 3.0, 1.9); r = r + 1;
             obj.optCtrl.tEnd.ValueChangedFcn = @(s,e) obj.previewTrueDrive();
-            obj.optCtrl.maxIter = obj.addOptSpinner(cg, r, 'Max iterations', 5, 40, 12); r = r + 1;
+            obj.optCtrl.maxIter = obj.addOptSpinner(cg, r, 'Max iterations', 5, 60, 25); r = r + 1;
 
             obj.optCtrl.parallel = uicheckbox(cg, 'Text', 'Use parallel (faster; starts a pool)', 'Value', false);
             obj.optCtrl.parallel.Layout.Row = r; obj.optCtrl.parallel.Layout.Column = [1 2]; r = r + 1;

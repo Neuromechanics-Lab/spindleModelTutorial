@@ -65,10 +65,16 @@ this rather than hiding it:
 
 | parameter | % of initial error closed |
 |---|---|
-| bag burst magnitude | ~99% |
-| the five chain control points | ~0% (they barely leave their starting value) |
+| bag burst magnitude | ~99%, reliably |
+| the five chain control points | **erratic** — sometimes several close 60–100%, sometimes none move, and individual points often move *away* |
 
-That is a property of the signal, not a failure of the optimizer. The total `r` is
+The chain result varies with the horizon, the solver and the run; do not read a
+single fit as definitive. See
+[07_differences_from_manuscript.md](07_differences_from_manuscript.md) for the
+full list of reasons, the largest being that the manuscript runs an outer 7×7 +
+5×5 grid over burst timing — 245 fits — where this demo runs one.
+
+Part of that is a property of the signal, not the optimizer. The total `r` is
 dominated by the bag: `rms(r_d)` is ~5× `rms(r_s)` in this protocol, and the cost
 landscape shows the same imbalance directly —
 

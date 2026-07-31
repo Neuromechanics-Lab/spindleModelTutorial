@@ -103,7 +103,7 @@ if tpaths.hasBspline
     % Few iterations here to keep the smoke test fast; the app uses more and
     % converges further. We assert a big cost drop and recovery of the strongly
     % identified magnitude parameter (bag burst), which is robust to iter count.
-    res = tutorialOptDemo(struct('tEnd', 1.4, 'maxIter', 10));
+    res = tutorialOptDemo(struct('tEnd', 1.4, 'maxIter', 25));
     nfail = nfail + check('optimizer cuts the cost by >60%', res.fvalOpt < 0.4 * res.fval0);
     % recoveryPct is now the fraction of the INITIAL error closed, so 0 means a
     % parameter never moved. The bag burst dominates the combined trace and
