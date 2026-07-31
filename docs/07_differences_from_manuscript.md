@@ -68,7 +68,7 @@ it; `'fmincon'` is available for comparison). The settings differ:
 | | manuscript | tutorial |
 |---|---|---|
 | MaxFunctionEvaluations | 400 | 2000 |
-| MaxIterations | 200 | 12 (the app's spinner) |
+| MaxIterations | 200 | 25 (the app's spinner) |
 | MeshTolerance / StepTolerance | 1e-4 / 1e-8 | defaults |
 | PollMethod | `GPSPositiveBasis2N` | default |
 | Parameter scaling | phase × 10 (`scaleVec_inner`) | none |
@@ -80,9 +80,24 @@ units, so an unscaled search takes effectively tiny steps in phase.
 ### 6. Horizon
 **Manuscript:** simulates 4.5 s, then trims the *cost window* to
 `sineStart + 2.7` cycles for speed.
-**Tutorial:** 1.6–1.9 s total (≈2–3 cycles), chosen so an interactive fit
-finishes in 1–2 minutes. The cost windows are comparable; the settling before it
-is not.
+**Tutorial:** 1.6–1.9 s total (≈2–3 cycles), chosen to keep an interactive fit to
+a few minutes. The cost windows are comparable; the settling before it is not.
+
+## What it costs in run time
+
+The Learn window is unaffected — a playground re-run is ~1.6 s, and moving a
+gamma slider ~1.3 s. The two fits in the Analysis Toolkit are slower than they
+were, because `patternsearch` polls 2N points per iteration and the budget rose
+from 12 to 25 iterations to compensate:
+
+| | before | now |
+|---|---|---|
+| Gamma optimization | 78 s (fmincon, 12 iter) | **228 s** (patternsearch, 25) |
+| Your data, optimize | 64 s (firing) | **134 s** (receptor, the new default) |
+
+Both are still far below the manuscript's own budget (200 iterations / 400
+evaluations per node, at 245 nodes). `opts.solver = 'fmincon'` and a lower
+`maxIter` trade accuracy back for speed.
 
 ## What this costs you
 
