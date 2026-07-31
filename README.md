@@ -23,15 +23,15 @@ and how fusimotor (γ) drive is inferred by fitting the model to data.
 | Tab | What it does |
 |-----|--------------|
 | **Overview** | What the model is and how the pipeline fits together. |
-| **Guided walkthrough** | A narrated, five-step tour: inputs (length + activation) → cross-bridge distribution (pre/early/post-stretch snapshots, with cursors) → receptor potential + yank → predicted firing → the whole pipeline. |
-| **Playground** | Free exploration, with a **Reset** button to return every parameter to its starting value. Sliders for the stretch protocol, the **extrafusal MTU** (α drive + tendon stiffness), gamma drive (levels in **% activation**, matching the plot; optional sinusoidal γ-static with amplitude in % and phase in seconds), fiber kinetics, and transduction gains. Plots length, **activation (%)**, fiber forces, the receptor potential, **predicted firing**, and a **cross-bridge distribution scrubber**. Every panel is badged **INPUT / INTERMEDIATE / OUTPUT**. |
+| **Guided walkthrough** | A narrated, five-step tour: inputs (length + activation) → cross-bridge distribution (pre/early/post-stretch snapshots, with cursors) → receptor potential + yank → from receptor potential to spikes → the whole pipeline. |
+| **Playground** | Free exploration, with a **Reset** button to return every parameter to its starting value. Sliders for the stretch protocol, the **extrafusal MTU** (α drive + tendon stiffness), gamma drive (levels in **% activation**, matching the plot; optional sinusoidal γ-static with amplitude in % and phase in seconds), fiber kinetics, and transduction gains. Plots length, **activation (%)**, fiber forces, the **Ia receptor potential** (the model's output), and a **cross-bridge distribution scrubber**. Every panel is badged **INPUT / INTERMEDIATE / OUTPUT**. |
 
 ### Analysis Toolkit (Apply)
 
 | Tab | What it does |
 |-----|--------------|
 | **Gamma optimization** | Generate a target Ia from *known* gamma drive, then watch an optimizer recover it — including the **gamma-static B-spline waveform**, drawn against the truth. Uses the manuscript's own B-spline routines. |
-| **Your data** | Run the model on **your own** inputs (see [file format](#bring-your-own-data-your-data-tab)): length + activations → firing (forward), or length + recorded Ia firing → the gamma drive that reproduces it (optimize). A built-in example demonstrates both. |
+| **Your data** | Run the model on **your own** inputs (see [file format](#bring-your-own-data-your-data-tab)): length + activations → receptor potential (forward), or length + recorded Ia firing → the gamma drive that reproduces it (optimize). A built-in example demonstrates both. |
 
 The two windows share one codebase (so they stay visually consistent) but open
 independently, so the Learn window stays light and never touches the optimization
@@ -42,6 +42,20 @@ code. Everything each window plots is produced by the **real** toolbox functions
 are driving the published model.
 
 ---
+
+## Why the app stops at the receptor potential
+
+The model's output is the Ia **receptor potential** `r`. Turning `r` into spikes
+is a separate step, and the integrate-and-fire the toolbox ships
+(`integrateAndFire_v2`) is limited by the time step in two ways at `dt = 1 ms`:
+its ceiling is `1/(refractory + 2*dt)` = **250 spikes/s**, and because spikes land
+on samples the rate is quantised to `1/(k*dt)` — 250, 200, 167, 143, … Any
+realistic gamma drive saturates it, so the firing trace flattens and shows the
+time step rather than the spindle.
+
+So the app plots `r`, and **`examples/spikesFromReceptorPotential.m`** gives a
+worked spike generator you can adapt: it runs on any simulation, checks for
+saturation, and explains what to change.
 
 ## Requirements
 
@@ -126,8 +140,8 @@ time-series the **same length as `t`**:
 | `targetFiring` | recorded Ia firing rate (spikes/s) | **optimize** run |
 | `tendonStiffness` | scalar (default 5000) | optional |
 
-- **Forward** (`length + activations → firing`): predicts fiber forces, receptor
-  potential, and firing from your inputs.
+- **Forward** (`length + activations → receptor potential`): predicts fiber forces
+  and the Ia receptor potential from your inputs.
 - **Optimize** (`length + your firing → gamma`): infers a compact gamma drive
   (γ-static level, γ-dynamic burst magnitude + on/off timing) that reproduces
   your firing. This uses a general parameterization suited to arbitrary
@@ -189,7 +203,7 @@ spindleModelTutorial/
 │   ├── tutorialForwardSim.m      the full pipeline, params -> all signals
 │   ├── tutorialOptDemo.m         recover known B-spline gamma drive (simulated Ia)
 │   ├── loadUserData.m            load + validate a user .mat (Your data tab)
-│   ├── runForwardFromData.m      user length + activations -> firing
+│   ├── runForwardFromData.m      user length + activations -> receptor potential
 │   ├── runOptFromData.m          user length + firing -> inferred gamma drive
 │   ├── saveUserResults.m         export a run to .mat + .csv
 │   └── exampleUserData.m         built-in demo dataset in the user-data format

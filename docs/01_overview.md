@@ -27,7 +27,7 @@ tiny muscle fibers.
      Ia receptor potential  r = r_s + r_d
                      │
                      ▼
-            predicted Ia firing
+         Ia receptor potential
 ```
 
 (The cross-bridge distribution that generates fiber force is the mechanistic
@@ -47,7 +47,7 @@ Each stage is a real function in `matlabMuscleSpindleModellingTools`:
 | MTU (α + tendon) → fascicle length | `musTenDriver20250627` |
 | Fibers → forces & cross-bridge distributions | `sarcSimDriverIntrafusal20250627` |
 | Forces + yank → receptor potential | `sarc2spindle_20240310` |
-| Receptor potential → firing | `integrateAndFire` |
+| Receptor potential → spikes | `integrateAndFire_v2` (not plotted; see `examples/spikesFromReceptorPotential.m`) |
 
 ## Two fibers, two roles
 

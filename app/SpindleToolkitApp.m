@@ -387,7 +387,7 @@ classdef SpindleToolkitApp < SpindleAppBase
                 'FontColor', s.axisTxt);
             obj.udInfo.Layout.Row = 4;
 
-            obj.udFwdBtn = uibutton(cg, 'Text', 'Run forward  ->  firing', 'FontWeight', 'bold', ...
+            obj.udFwdBtn = uibutton(cg, 'Text', 'Run forward  ->  receptor potential', 'FontWeight', 'bold', ...
                 'Enable', 'off', 'BackgroundColor', s.tagInput, 'FontColor', [1 1 1], ...
                 'ButtonPushedFcn', @(src,e) obj.runUserForward());
             obj.udFwdBtn.Layout.Row = 5;
@@ -452,7 +452,7 @@ classdef SpindleToolkitApp < SpindleAppBase
             [~, nm, ext] = fileparts(d.file);
             lenKind = 'MTU length'; if d.hasFascicle, lenKind = 'fascicle length'; end
             avail = {};
-            if d.availForward,  avail{end+1} = 'forward (->firing)'; end
+            if d.availForward,  avail{end+1} = 'forward (->receptor potential)'; end
             if d.availOptimize, avail{end+1} = 'optimize (->gamma)'; end
             obj.udInfo.Text = sprintf(['Loaded %s%s\n%d samples, dt = %.4g s, %s.\n' ...
                 'Available: %s.'], nm, ext, d.n, d.dt, lenKind, strjoin(avail, ', '));
@@ -489,19 +489,16 @@ classdef SpindleToolkitApp < SpindleAppBase
         function renderUserForward(obj, out)
             a = obj.udResAx;
             obj.clearUDAxes(a);
-            for i = 1:5, a(i).Visible = 'on'; end
-            a(1).Parent.RowHeight = repmat({'1x'}, 1, 5);
+            % Four panels, ending at the RECEPTOR POTENTIAL - the model's output.
+            % Spikes are left to examples/spikesFromReceptorPotential.m; see the
+            % walkthrough step "From receptor potential to spikes" for why.
+            for i = 1:4, a(i).Visible = 'on'; end
+            a(5).Visible = 'off';
+            a(1).Parent.RowHeight = {'1x','1x','1x','1x',0};
             obj.axLength(a(1), out);
             obj.axActivation(a(2), out);
             obj.axForce(a(3), out);
-            obj.axReceptor(a(4), out);
-            obj.axFiring(a(5), out); xlabel(a(5), 'time (s)');
-            % Overlay the user's own firing on the firing panel, if present.
-            if isfield(out, 'targetFiring') && ~isempty(out.targetFiring)
-                hold(a(5), 'on');
-                plot(a(5), out.t, out.targetFiring, '--', 'Color', obj.S.muted, 'LineWidth', 1.6);
-                hold(a(5), 'off');
-            end
+            obj.axReceptor(a(4), out); xlabel(a(4), 'time (s)');
             obj.beautify(obj.udPlotPanel);
         end
 
@@ -625,7 +622,7 @@ classdef SpindleToolkitApp < SpindleAppBase
 '<li class="k"><code>chainAct</code>, <code>bagAct</code> - &gamma; activations &rarr; for a FORWARD run</li>', ...
 '<li class="k"><code>targetFiring</code> - Ia rate (spikes/s) &rarr; to OPTIMIZE &gamma;</li>', ...
 '</ul>', ...
-'<b>Forward:</b> length + activations &rarr; forces, receptor potential, firing.<br>', ...
+'<b>Forward:</b> length + activations &rarr; forces and the Ia receptor potential.<br>', ...
 '<b>Optimize:</b> length + your firing &rarr; the &gamma; drive that reproduces it.', ...
 '</body></html>'];
         end

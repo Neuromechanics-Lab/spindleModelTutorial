@@ -33,19 +33,29 @@ is momentarily smaller is attenuated (to 30%, chosen to match Banks et al.,
 1997), rather than the two summing linearly. Toggle it in the Playground to see
 how it reshapes `r`.
 
-## From receptor potential to firing
+## From receptor potential to spikes
 
-`integrateAndFire.m` converts the continuous `r` into discrete afferent spikes:
-it integrates `r` over time and emits a spike whenever the integral crosses
-threshold (with a short refractory period). The instantaneous firing rate (IFR)
-is what you would compare against recorded Ia spike trains.
+`r` is where this tutorial stops: it is what the biophysical model predicts, and
+everything the spindle does to the stretch is already in it.
 
-## Try it
+Converting `r` into afferent spikes is a separate modelling choice. The toolbox
+ships one — `integrateAndFire_v2.m`, which integrates `r` and emits a spike each
+time the integral crosses a threshold, subject to a refractory period — but the
+app does not plot its output, because two limits set by the time step make it
+misleading at `dt = 1 ms`:
 
-In the **Playground**, watch the receptor-potential plot (blue `r_s`, orange
-`r_d`, black total `r`) as you:
+- **Ceiling.** The refractory period is enforced by counting samples, which costs
+  an extra `2*dt` on top of it, so the maximum rate is `1/(refractory + 2*dt)` =
+  **250 spikes/s**, not the 500 the 2 ms refractory implies.
+- **Quantisation.** Spikes land on samples, so every interval is a whole number of
+  them and the rate can only be `1/(k*dt)`: 250, 200, 167, 143, 125, … The steps
+  get coarser the faster the firing.
 
-- Increase **Yank gain kYb** → the onset transient in `r_d` grows.
-- Increase **Static gain kFc** → the sustained `r_s` level rises.
-- Turn on **Branch occlusion** → the smaller component gets suppressed instant
-  by instant.
+Any realistic gamma drive pushes `r` past that ceiling and the firing trace goes
+flat, which says more about the time step than about the spindle.
+
+`examples/spikesFromReceptorPotential.m` runs the generator on any simulation,
+checks directly for saturation, and documents what to change — the gain/threshold
+ratio, `dt`, or the generator itself (a time-based refractory removes the
+`dt`-dependence; interpolating the threshold crossing removes the quantisation and
+the downward bias that comes with it).

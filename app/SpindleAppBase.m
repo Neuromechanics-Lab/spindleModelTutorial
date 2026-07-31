@@ -185,7 +185,7 @@ classdef SpindleAppBase < handle
             ylabel(ax, 'r (a.u.)'); title(ax, 'Ia receptor potential');
             legend(ax, {'r_s (static)','r_d (dynamic)','r (total)'}, 'Location', 'best');
             obj.padY(ax, [out.rs(:); out.rd(:); out.r(:)]); xlim(ax, [out.t(1) out.t(end)]);
-            obj.tagAxes(ax, 'intermediate');
+            obj.tagAxes(ax, 'output');
         end
 
         function axFiring(obj, ax, out)

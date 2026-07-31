@@ -48,27 +48,27 @@ dur  = out.t >= t0 & out.t < t0 + 0.3;
 nfail = nfail + check('ramp-and-hold drives a dynamic response (rd peak > baseline)', ...
     max(out.rd(dur)) > 1.3 * median(out.rd(pre)));
 
-% integrateAndFire_v2 is refractory-limited and its rate quantises to 1/(k*dt),
-% so a too-strong drive collapses the whole firing trace onto 1/(4*dt) and the
-% firing panel teaches nothing. Turning the gamma drive up SHOULD saturate - that
-% is a real property of the model at dt = 1 ms - but the shipped defaults must
-% not, or every example looks like a flat line.
-ifr = out.IFR(isfinite(out.IFR));
-nfail = nfail + check('default example firing is not pinned at the ceiling', ...
-    mean(ifr >= 0.99 / (4 * out.params.sim.dt)) < 0.05);
-nfail = nfail + check('firing rises above baseline during the stretch', ...
-    max(ifr(out.t_firing >= t0 & out.t_firing < t0 + 0.25)) > ...
-    1.4 * median(ifr(out.t_firing < t0)));
+% The RECEPTOR POTENTIAL is the tutorial's output now, so that is what has to
+% carry a visible response. (Spikes moved to examples/spikesFromReceptorPotential.m:
+% the toolbox generator is refractory-limited to 1/(4*dt) = 250 spikes/s, which
+% any realistic gamma drive saturates, so plotting it taught nothing.)
+nfail = nfail + check('receptor potential has a clear stretch response', ...
+    max(out.r(dur)) > 2 * median(out.r(pre)));
+fprintf('   r      : rest %.2f, peak %.2f (%.1fx)\n', ...
+    median(out.r(pre)), max(out.r(dur)), max(out.r(dur))/median(out.r(pre)));
+
 % The offset integrateAndFire_v2 removes must be the ZERO-ACTIVATION baseline
-% (the toolbox holds activation at zero for the first 10 steps), not a settled
-% working level - subtracting the latter would erase the tonic gamma-static
-% effect entirely and make that slider do nothing to firing.
+% (the toolbox holds activation at zero for the first 10 steps). The example
+% script relies on this, so the shipped defaults must still honour it.
 nfail = nfail + check('run starts at zero activation, so r(1) is the true offset', ...
     out.actC(1) < 1e-6 && out.actB(1) < 1e-6);
-fprintf('   firing : base %.0f, peak %.0f, plateau %.0f, %.0f%% pinned\n', ...
-    median(ifr(out.t_firing < t0)), max(ifr), ...
-    median(ifr(out.t_firing > t0 + out.params.protocol.rampDur + 0.15)), ...
-    100 * mean(ifr >= 0.99 / (4 * out.params.sim.dt)));
+
+% The spike generator is no longer plotted, but it is still shipped and still
+% exercised by the example - keep it callable and finite.
+[tsp, ifr] = integrateAndFire_v2(out.r_t, out.r, 1);
+ifr = ifr(isfinite(ifr));
+nfail = nfail + check('spike generator still runs on the model output', ...
+    ~isempty(tsp) && ~isempty(ifr) && all(ifr > 0));
 
 % ---- 2. Protocol variants run ----------------------------------------
 for typ = {'sine', 'triangle'}

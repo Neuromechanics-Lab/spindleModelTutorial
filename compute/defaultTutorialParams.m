@@ -32,15 +32,14 @@ p.sim.tEnd = 2.0;     % s, total simulated time
 % A long ramp by default so the interesting phase fills most of the window.
 p.protocol.type          = 'ramp-hold';  % 'ramp-hold' | 'sine' | 'triangle'
 p.protocol.L0            = 1250;          % nm, baseline MTU command length
-p.protocol.amplitude_pct = 4;            % stretch amplitude, % of L0
+p.protocol.amplitude_pct = 8;            % stretch amplitude, % of L0
 p.protocol.perturbStart  = 0.6;          % s, when the stretch begins - well after
                                          % the gamma onsets, so the drive has settled
                                          % and there is a real baseline to compare to
-% A FAST ramp. This is what makes the firing look like a real Ia response: the
-% dynamic (yank) term is proportional to dF/dt, so a slow ramp produces almost no
-% burst and firing just tracks length upward. 0.1 s gives the classic shape -
-% baseline, a burst at ramp onset, then adaptation to a static plateau (63 -> 200
-% -> 111 spikes/s here) - without going near the 250 ceiling.
+% A FAST ramp. The dynamic term is proportional to dF/dt, so a slow ramp produces
+% almost no yank and the receptor potential just tracks length. 0.1 s gives the
+% classic shape: a sharp transient at stretch onset riding on a maintained,
+% length-dependent level (r runs 3.4 -> 11.0 -> ~5 here).
 p.protocol.rampDur       = 0.10;         % s, rise time (ramp-hold & triangle)
 p.protocol.freq          = 1;            % Hz, cycle frequency (sine & triangle)
 
@@ -58,24 +57,19 @@ p.mtu.alphaPhase     = 0;       % rad (sine mode)
 % Levels are in % ACTIVATION (0-100) - the same units the app plots - and are
 % converted to the model's pCa internally by makeGammaDrive.
 p.gamma.chainMode      = 'constant';  % 'constant' | 'sine'
-p.gamma.chainOn        = 0.05;        % s, chain (gamma-static) onset. NOT 0: the
-                                      % run must START at zero activation, because
-                                      % integrateAndFire_v2 takes r(1) as the resting
-                                      % offset (the toolbox holds activation at zero
-                                      % for the first 10 steps for the same reason)
-p.gamma.chainLevel_pct = 20;          % % activation: level, or MEAN of the sine
+p.gamma.chainOn        = 0.05;        % s, chain (gamma-static) onset. Kept above 0
+                                      % so a run starts from zero activation, the
+                                      % convention the toolbox follows by holding
+                                      % activation at zero for its first 10 steps.
+p.gamma.chainLevel_pct = 50;          % % activation: level, or MEAN of the sine
 p.gamma.chainAmp_pct   = 20;          % % activation, sine amplitude
 p.gamma.chain_freq     = 1.0;         % Hz, sine frequency
 p.gamma.chainPhase_s   = 0.0;         % s, sine phase relative to chainOn
-% Deliberately low. Firing is refractory-limited to 1/(4*dt) = 250 spikes/s and
-% quantises to 1/(k*dt), so above ~150 the only rungs left are 167, 200, 250 and
-% the response flattens into a block. kFb is the largest transduction gain and the
-% bag fiber is strong, so even a few percent of bag drive moves r a long way -
-% above ~4% the whole trace pins at the ceiling. These levels keep the run on the
-% finely spaced rungs (~60-150), where changing a slider produces a visible,
-% proportionate response. Turn them up in the Playground to see it saturate: that
-% is a real property of the model at dt = 1 ms, not a bug.
-p.gamma.bagBurst_pct   = 2;           % % activation during the gamma-dynamic burst
+% Switching gamma on is a STEP, and the bag's yank response to that step grows
+% very fast with level (onset transient in r: 3.2 at 40%, 5.6 at 60%, 19 at 90%).
+% Above ~60% the switch-on artefact dwarfs the stretch response it is meant to
+% set up, so 60% keeps the stretch clearly dominant (~3x the onset transient).
+p.gamma.bagBurst_pct   = 60;          % % activation during the gamma-dynamic burst
 p.gamma.bagOn          = 0.05;        % s, burst onset (see chainOn)
 p.gamma.bagOff         = 1.8;         % s, burst offset
 
