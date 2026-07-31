@@ -247,18 +247,6 @@ classdef SpindleToolkitApp < SpindleAppBase
             spn.Layout.Row = row; spn.Layout.Column = 2;
         end
 
-        function ax = axInPanel(obj, gridParent, row, col)
-            % One axes, alone in its own uipanel. A legend created for an axes
-            % that sits DIRECTLY in a uigridlayout becomes an extra grid child
-            % (with a Layout that has no Row/Column, so it cannot be pinned),
-            % which grows the grid and blanks every axes in it. Parenting the
-            % axes to a panel keeps each legend inside that panel, so the
-            % grid's child count is fixed for the life of the window.
-            p = uipanel(gridParent, 'BorderType', 'none', 'BackgroundColor', obj.S.card);
-            p.Layout.Row = row; p.Layout.Column = col;
-            ax = uiaxes(p, 'Units', 'normalized', 'Position', [0 0 1 1]);
-        end
-
         function f = pctToFrac(~, v)
             % % activation -> the [0 1] fraction the activation curve expects.
             f = min(max(v / 100, 0), 1);

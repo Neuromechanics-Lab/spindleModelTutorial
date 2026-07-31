@@ -119,10 +119,25 @@ classdef SpindleAppBase < handle
             end
         end
 
-        function ax = axInGrid(~, grid, row)
+        function ax = axInPanel(obj, gridParent, row, col)
+            % One axes, alone in its own uipanel. A legend created for an axes
+            % that sits DIRECTLY in a uigridlayout becomes an extra grid child
+            % whose Layout has no Row/Column, so it cannot be pinned - the grid
+            % then grows rows and every axes in it collapses to nothing. Wrapping
+            % each axes in a panel keeps its legend inside that panel, so the
+            % grid's child count is fixed for the life of the window.
+            % (For uiaxes, Position INCLUDES the labels/margins, so [0 0 1 1]
+            % fills the panel without clipping them.)
+            if nargin < 4, col = 1; end
+            p = uipanel(gridParent, 'BorderType', 'none', 'BackgroundColor', obj.S.card);
+            p.Layout.Row = row; p.Layout.Column = col;
+            ax = uiaxes(p, 'Units', 'normalized', 'Position', [0 0 1 1]);
+        end
+
+        function ax = axInGrid(obj, grid, row)
             % Create an axes explicitly placed at a grid row (auto-flow placement
             % in uigridlayout is unreliable, so always set the layout).
-            ax = uiaxes(grid); ax.Layout.Row = row; ax.Layout.Column = 1;
+            ax = obj.axInPanel(grid, row, 1);
         end
 
         % ================================================================

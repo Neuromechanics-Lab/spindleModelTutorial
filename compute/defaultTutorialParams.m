@@ -32,11 +32,16 @@ p.sim.tEnd = 2.0;     % s, total simulated time
 % A long ramp by default so the interesting phase fills most of the window.
 p.protocol.type          = 'ramp-hold';  % 'ramp-hold' | 'sine' | 'triangle'
 p.protocol.L0            = 1250;          % nm, baseline MTU command length
-p.protocol.amplitude_pct = 8;            % stretch amplitude, % of L0
+p.protocol.amplitude_pct = 4;            % stretch amplitude, % of L0
 p.protocol.perturbStart  = 0.6;          % s, when the stretch begins - well after
                                          % the gamma onsets, so the drive has settled
                                          % and there is a real baseline to compare to
-p.protocol.rampDur       = 0.6;          % s, rise time (ramp-hold & triangle)
+% A FAST ramp. This is what makes the firing look like a real Ia response: the
+% dynamic (yank) term is proportional to dF/dt, so a slow ramp produces almost no
+% burst and firing just tracks length upward. 0.1 s gives the classic shape -
+% baseline, a burst at ramp onset, then adaptation to a static plateau (63 -> 200
+% -> 111 spikes/s here) - without going near the 250 ceiling.
+p.protocol.rampDur       = 0.10;         % s, rise time (ramp-hold & triangle)
 p.protocol.freq          = 1;            % Hz, cycle frequency (sine & triangle)
 
 % -- Extrafusal muscle-tendon unit --------------------------------------

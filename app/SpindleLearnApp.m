@@ -222,17 +222,20 @@ classdef SpindleLearnApp < SpindleAppBase
             pg = uigridlayout(ppanel, [3 2]);
             pg.RowHeight = {'1x','1x','1x'}; pg.RowSpacing = 6; pg.ColumnSpacing = 10;
             pg.BackgroundColor = obj.S.card;
-            obj.pgAxes.length     = uiaxes(pg); obj.pgAxes.length.Layout.Row = 1;     obj.pgAxes.length.Layout.Column = 1;
-            obj.pgAxes.activation = uiaxes(pg); obj.pgAxes.activation.Layout.Row = 1;  obj.pgAxes.activation.Layout.Column = 2;
-            obj.pgAxes.force      = uiaxes(pg); obj.pgAxes.force.Layout.Row  = 2;      obj.pgAxes.force.Layout.Column  = 1;
-            obj.pgAxes.rp         = uiaxes(pg); obj.pgAxes.rp.Layout.Row     = 2;      obj.pgAxes.rp.Layout.Column     = 2;
-            obj.pgAxes.firing     = uiaxes(pg); obj.pgAxes.firing.Layout.Row = 3;      obj.pgAxes.firing.Layout.Column = 1;
+            % One axes per panel - see SpindleAppBase.axInPanel. These panels all
+            % carry legends, which would otherwise overflow this 6-cell grid (5
+            % axes + 4 legends + the scrubber box = 10 children) and collapse it.
+            obj.pgAxes.length     = obj.axInPanel(pg, 1, 1);
+            obj.pgAxes.activation = obj.axInPanel(pg, 1, 2);
+            obj.pgAxes.force      = obj.axInPanel(pg, 2, 1);
+            obj.pgAxes.rp         = obj.axInPanel(pg, 2, 2);
+            obj.pgAxes.firing     = obj.axInPanel(pg, 3, 1);
 
             % Cross-bridge distribution + scrubber in the bottom-right cell
             distBox = uigridlayout(pg, [2 1]); distBox.Layout.Row = 3; distBox.Layout.Column = 2;
             distBox.RowHeight = {'1x', 46}; distBox.RowSpacing = 2; distBox.Padding = [0 0 0 0];
             distBox.BackgroundColor = obj.S.card;
-            obj.pgAxes.dist = uiaxes(distBox); obj.pgAxes.dist.Layout.Row = 1;
+            obj.pgAxes.dist = obj.axInPanel(distBox, 1, 1);
             scRow = uigridlayout(distBox, [2 1]); scRow.Layout.Row = 2;
             scRow.RowHeight = {16, 22}; scRow.RowSpacing = 0; scRow.Padding = [0 0 0 0];
             scRow.BackgroundColor = obj.S.card;
@@ -453,7 +456,7 @@ classdef SpindleLearnApp < SpindleAppBase
             cla(obj.pgAxes.force);      obj.axForce(obj.pgAxes.force, out);      xlabel(obj.pgAxes.force, 'time (s)');
             cla(obj.pgAxes.rp);         obj.axReceptor(obj.pgAxes.rp, out);      xlabel(obj.pgAxes.rp, 'time (s)');
             cla(obj.pgAxes.firing);     obj.axFiring(obj.pgAxes.firing, out);    xlabel(obj.pgAxes.firing, 'time (s)');
-            obj.beautify(obj.pgAxes.length.Parent);
+            obj.beautify(obj.pgAxes.length.Parent.Parent);   % the axes grid, not its panel
         end
 
         function updateDistPlot(obj, tScrub)
@@ -562,9 +565,9 @@ classdef SpindleLearnApp < SpindleAppBase
             p = defaultTutorialParams();
             p.sim.tEnd              = 2.4;
             p.protocol.type         = 'ramp-hold';
-            p.protocol.amplitude_pct = 8;
+            % Amplitude and ramp duration are inherited too - the fast ramp is
+            % what gives the tour a recognisable burst-and-adapt Ia response.
             p.protocol.perturbStart = 0.6;
-            p.protocol.rampDur      = 1.0;
             % Drive LEVELS are inherited from defaultTutorialParams on purpose -
             % they are chosen to keep firing off the refractory ceiling, and
             % overriding them here is exactly how this tour ended up showing a
