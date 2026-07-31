@@ -7,7 +7,9 @@ function [sarcB, sarcC] = makeGammaDrive(t, gamma, sarcB, sarcC)
 %
 %   Biology encoded here:
 %     - Chain fiber  <- gamma STATIC : a maintained drive that switches on at
-%       chainOn. Either a constant level or a sinusoid (chainMode).
+%       chainOn. A constant level, a sinusoid, or a 5-control-point B-spline
+%       (chainMode = 'constant' | 'sine' | 'bspline'; see the bspline branch for
+%       the periodic vs free variants).
 %     - Bag fiber    <- gamma DYNAMIC: a phasic burst. Silent baseline with a
 %       rectangular burst between bagOn/bagOff.
 %
@@ -79,9 +81,37 @@ if ~isempty(onIdx)
             case 'sine'
                 sarcC.pCa(active) = gamma.chain_pCa - ...
                     gamma.chain_amp * sin(2*pi*gamma.chain_freq*tRel + gamma.chain_phase);
+            case 'bspline'
+                % 5 control points in pCa, spline-interpolated. Two variants:
+                %
+                %  PERIODIC (gamma.chain_periodic = true) reproduces the
+                %  manuscript's construction (getIntrafusal_pCa_Bspline_5cp):
+                %  points sit at 0/20/40/60/80% of one cycle, a sixth point
+                %  repeats the first so the waveform joins up, and the cycle is
+                %  tiled across the trial. Use it when the protocol really is
+                %  cyclic - it ties every cycle to one waveform, so 5 numbers
+                %  describe all of them.
+                %
+                %  FREE (the default) spreads the same 5 points evenly across
+                %  the ACTIVE window with no wrap constraint, so it can express
+                %  a constant (all points equal), a ramp (monotonic points) or
+                %  any smooth shape. Use it for arbitrary protocols, where a
+                %  repeating waveform would be meaningless.
+                cp = gamma.chain_cp(:);
+                if isfield(gamma, 'chain_periodic') && gamma.chain_periodic
+                    per = gamma.chain_cyclePeriod;
+                    ctrlT = linspace(0, 1, 6)' * per;      % one cycle
+                    ctrlV = [cp; cp(1)];                   % last = first
+                    phi   = mod(tRel(:), per);             % tile it
+                    sarcC.pCa(active) = interp1(ctrlT, ctrlV, phi, 'spline');
+                else
+                    span  = max(tRel(end), eps);
+                    ctrlT = linspace(0, span, numel(cp))';
+                    sarcC.pCa(active) = interp1(ctrlT, cp, tRel(:), 'spline');
+                end
             otherwise
                 error('makeGammaDrive:badChainMode', ...
-                    'Unknown chainMode "%s". Use constant or sine.', gamma.chainMode);
+                    'Unknown chainMode "%s". Use constant, sine or bspline.', gamma.chainMode);
         end
     end
 end

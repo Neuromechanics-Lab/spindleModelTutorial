@@ -61,6 +61,19 @@ inner parameters at *every node* (245 fits, run in parallel).
 — **one** fit. This is the single biggest difference in optimization effort, and
 the main reason the tutorial's recovery is weaker and more erratic.
 
+### 4b. The Your-data tab fits a different γ parameterization
+
+The gamma-optimization demo uses the manuscript's periodic B-spline. The
+**Your-data** tab has to cope with arbitrary user protocols, so it defaults to a
+**non-periodic** 5-control-point spline (`gammaStatic = 'bspline-free'`), and
+offers the manuscript's periodic variant (`'bspline-periodic'`, which needs a
+stated cycle period) plus a single-level `'constant'` mode.
+
+It also fits burst on/off in **seconds** rather than as a percentage of the gait
+cycle, and does not fit a phase term — in a free spline the phase is redundant
+with the control points, and in the periodic variant the cycle is anchored at the
+start of the data.
+
 ### 5. Solver settings
 Both now use `patternsearch` (the tutorial exposes `opts.solver` and defaults to
 it; `'fmincon'` is available for comparison). The settings differ:

@@ -52,6 +52,28 @@ fitTarget = lower(getOpt(opts, 'fitTarget', 'receptor'));
 % better search - derivative-free, so it copes with the stepped cost you get in
 % 'firing' mode - but it polls 2N points per iteration, so it is slower. Worth
 % switching to if a fit looks like it stalled.
+% How gamma-STATIC is modelled. 'bspline-free' is the default: 5 control points
+% spread across the trial, spline-interpolated, no periodicity assumed - it can
+% express a constant (all points equal), a ramp (monotonic points) or any smooth
+% shape, so it suits arbitrary protocols. 'bspline-periodic' reproduces the
+% manuscript's construction (one cycle tiled, last control point = first) and is
+% the better model when the protocol really is cyclic, because 5 numbers then
+% describe every cycle; it needs opts.cyclePeriod. 'constant' is the old
+% single-level fit, kept as a fast special case.
+gammaStatic = lower(getOpt(opts, 'gammaStatic', 'bspline-free'));
+if ~ismember(gammaStatic, {'bspline-free','bspline-periodic','constant'})
+    error('runOptFromData:badGammaStatic', ...
+        ['opts.gammaStatic must be ''bspline-free'', ''bspline-periodic'' or ' ...
+         '''constant'' (got ''%s'').'], gammaStatic);
+end
+cyclePeriod = getOpt(opts, 'cyclePeriod', []);
+if strcmp(gammaStatic, 'bspline-periodic') && isempty(cyclePeriod)
+    error('runOptFromData:needCyclePeriod', ...
+        ['bspline-periodic needs opts.cyclePeriod (seconds per cycle) - the ' ...
+         'tutorial will not guess it from your data.']);
+end
+nCP = 5;   % control points, matching the manuscript's 5
+
 solver = lower(getOpt(opts, 'solver', 'fmincon'));
 if ~ismember(solver, {'fmincon','patternsearch'})
     error('runOptFromData:badSolver', ...
@@ -93,10 +115,8 @@ target = movmean(fillmissing(d.targetFiring(:)', 'linear'), smoothWin);
 
     function [sig, out] = modelSignal(x)
         % Returns whichever quantity is being compared, on the user's grid.
-        g = struct('chainMode','constant','chainOn',t(1),'chain_pCa',x(1), ...
-            'chain_amp',0,'chain_freq',1,'chain_phase',0, ...
-            'bagBaseline',9,'bagBurst',x(2),'bagOn',x(3),'bagOff',x(4));
-        [sB, sC] = makeGammaDrive(t, g, sarcB0, sarcC0);
+        [sB, sC] = makeGammaDrive(t, gammaFromX(x, t(1), gammaStatic, cyclePeriod), ...
+            sarcB0, sarcC0);
         [~, dB, ~, dC] = sarcSimDriverIntrafusal20250627(t, delta_cdl, sB, sC);
         [r_t, ~, ~, r] = sarc2spindle_20240310(dB, dC, tr.kFc, tr.kFb, tr.kYb, ...
             tr.occlusion, tr.threshold);
@@ -131,12 +151,25 @@ target = movmean(fillmissing(d.targetFiring(:)', 'linear'), smoothWin);
 
 % -- Bounds + start -----------------------------------------------------
 tSpan = [t(1) t(end)];
-x0 = getOpt(opts, 'x0', [6.5, 6.0, t(1) + 0.15*(t(end)-t(1)), t(1) + 0.7*(t(end)-t(1))]);
-lb = [4.5, 4.5, tSpan(1), tSpan(1)];
-ub = [9.0, 9.0, tSpan(2), tSpan(2)];
-names  = {'chain_pCa','bagBurst','bagOn','bagOff'};
-labels = {'Chain pCa (\gamma-static)','Bag burst pCa (\gamma-dynamic)', ...
-          'Bag burst onset (s)','Bag burst offset (s)'};
+bagX0 = [6.0, t(1) + 0.15*(t(end)-t(1)), t(1) + 0.7*(t(end)-t(1))];
+bagLb = [4.5, tSpan(1), tSpan(1)];
+bagUb = [9.0, tSpan(2), tSpan(2)];
+bagNames  = {'bagBurst','bagOn','bagOff'};
+bagLabels = {'Bag burst pCa (\gamma-dynamic)', ...
+             'Bag burst onset (s)','Bag burst offset (s)'};
+if strcmp(gammaStatic, 'constant')
+    x0 = [6.5, bagX0];  lb = [4.5, bagLb];  ub = [9.0, bagUb];
+    names  = [{'chain_pCa'}, bagNames];
+    labels = [{'Chain pCa (\gamma-static)'}, bagLabels];
+else
+    x0 = [6.5*ones(1,nCP), bagX0];
+    lb = [4.5*ones(1,nCP), bagLb];
+    ub = [9.0*ones(1,nCP), bagUb];
+    names  = [arrayfun(@(k) sprintf('cp%d', k), 1:nCP, 'UniformOutput', false), bagNames];
+    labels = [arrayfun(@(k) sprintf('\\gamma-static CP%d (pCa)', k), 1:nCP, ...
+                       'UniformOutput', false), bagLabels];
+end
+x0 = getOpt(opts, 'x0', x0);
 
 history = struct('iter', {}, 'fval', {}, 'x', {});
     function [stop, o2, chg] = psout(ov, o2, flag)
@@ -184,6 +217,8 @@ result.fit0 = sig0; result.fitOpt = sigOpt;
 % plotted mean-normalized because that is what the cost actually minimized -
 % showing them in raw units would imply an absolute match that was never fitted.
 result.fitTarget = fitTarget;
+result.gammaStatic = gammaStatic;
+result.cyclePeriod = cyclePeriod;
 if strcmp(fitTarget, 'receptor')
     result.fitUnits = 'receptor potential r (mean-normalized)';
 else
@@ -192,24 +227,48 @@ end
 result.x0 = x0; result.xOpt = xOpt; result.names = names; result.labels = labels;
 result.history = history; result.fval0 = fval0; result.fvalOpt = fvalOpt;
 result.gammaOpt = struct('t', t, 'chainPca', oO.pCaC(:), 'bagPca', oO.pCaB(:));
-result.outOpt = runForwardFromData(setGammaData(d, xOpt, ac));  % full output at solution
+result.outOpt = runForwardFromData(setGammaData(d, xOpt, ac, gammaStatic, cyclePeriod));  % full output at solution
 result.fascicle = fascicle; result.alphaAct = alphaAct;
 end
 
 
 % ======================================================================
-function d2 = setGammaData(d, x, ac)
+function d2 = setGammaData(d, x, ac, gammaStatic, cyclePeriod)
 % Build a forward-data struct whose activations equal the optimized gamma, so
 % the full model output can be produced/plotted at the solution.
-g = struct('chainMode','constant','chainOn',d.t(1),'chain_pCa',x(1), ...
-    'chain_amp',0,'chain_freq',1,'chain_phase',0, ...
-    'bagBaseline',9,'bagBurst',x(2),'bagOn',x(3),'bagOff',x(4));
+g = gammaFromX(x, d.t(1), gammaStatic, cyclePeriod);
 sB = getDefaultSarcB(); sC = getDefaultSarcC();
 [sB, sC] = makeGammaDrive(d.t, g, sB, sC);
 d2 = d;
 d2.chainAct = min(max(ac.pCaToActC(sC.pCa(:))', 0), 1);
 d2.bagAct   = min(max(ac.pCaToActB(sB.pCa(:))', 0), 1);
 end
+
+function g = gammaFromX(x, t0, gammaStatic, cyclePeriod)
+% Map the fitted vector onto a makeGammaDrive spec. ONE definition, used by the
+% objective and by the final re-simulation, so the drive that is reported can
+% never differ from the one that was scored.
+switch gammaStatic
+    case 'constant'
+        g = struct('chainMode','constant', 'chain_pCa', x(1), ...
+                   'chain_amp',0, 'chain_freq',1, 'chain_phase',0);
+        bag = x(2:4);
+    case 'bspline-periodic'
+        g = struct('chainMode','bspline', 'chain_cp', x(1:5), ...
+                   'chain_periodic', true, 'chain_cyclePeriod', cyclePeriod);
+        bag = x(6:8);
+    otherwise   % bspline-free
+        g = struct('chainMode','bspline', 'chain_cp', x(1:5), ...
+                   'chain_periodic', false);
+        bag = x(6:8);
+end
+g.chainOn     = t0;
+g.bagBaseline = 9;
+g.bagBurst    = bag(1);
+g.bagOn       = bag(2);
+g.bagOff      = bag(3);
+end
+
 
 function v = getOpt(opts, field, default)
 if isfield(opts, field) && ~isempty(opts.(field)), v = opts.(field); else, v = default; end

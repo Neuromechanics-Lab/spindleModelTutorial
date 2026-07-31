@@ -151,6 +151,21 @@ nfail = nfail + check('mean-normalized cost is scale-invariant', ...
     abs(meanNormRMSE(3.7 * uo.r, uo.r)) < 1e-12);
 nfail = nfail + check('mean-normalized cost is non-zero for a different shape', ...
     meanNormRMSE(uo.r, uo.r(end:-1:1)) > 1e-3);
+for gs = {'bspline-free', 'bspline-periodic', 'constant'}
+    o = struct('maxIter', 3, 'gammaStatic', gs{1}, 'cyclePeriod', 0.64);
+    rg = runOptFromData(d, o);
+    nP = numel(rg.xOpt);
+    nfail = nfail + check(sprintf('gammaStatic=%s fits (%d params)', gs{1}, nP), ...
+        isfinite(rg.fvalOpt) && strcmp(rg.gammaStatic, gs{1}) && ...
+        nP == 4 + 4*~strcmp(gs{1}, 'constant'));
+end
+% The periodic spline must refuse to guess a cycle period.
+try
+    runOptFromData(d, struct('maxIter', 1, 'gammaStatic', 'bspline-periodic'));
+    nfail = nfail + check('periodic spline demands a cycle period', false);
+catch
+    nfail = nfail + check('periodic spline demands a cycle period', true);
+end
 for ft = {'receptor', 'firing'}
     ro = runOptFromData(d, struct('maxIter', 4, 'fitTarget', ft{1}));
     nfail = nfail + check(sprintf('optimize-from-data runs with fitTarget=%s', ft{1}), ...

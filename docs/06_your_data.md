@@ -123,6 +123,25 @@ If you want the spike generator in the loop anyway, switch **Optimize by fitting
 to *firing rate* in the app, or pass `opts.fitTarget = 'firing'` in code. The cost
 is mean-normalized in both cases.
 
+### How γ-static is modelled
+
+`opts.gammaStatic` (and the app's **γ-static model** dropdown):
+
+| mode | parameters | use it when |
+|---|---|---|
+| `'bspline-free'` **(default)** | 8 | any protocol. 5 control points spread across the trial, spline-interpolated, no periodicity assumed — it can express a **constant** (all points equal), a **ramp** (monotonic points) or any smooth shape |
+| `'bspline-periodic'` | 8 | the protocol really is cyclic. The manuscript's construction: one cycle tiled, with the last control point tied to the first. Needs `opts.cyclePeriod` |
+| `'constant'` | 4 | you only want a single γ-static level. Fastest |
+
+The periodic variant is not merely the restricted case — when your data *is*
+cyclic it is the **better** model, because five numbers then describe every
+cycle, and the fit cannot chase cycle-to-cycle noise. It is what the manuscript
+uses for gait. But it forces the waveform to return to where it started and
+needs a cycle period, so it is wrong for a ramp-and-hold or a step.
+
+The tutorial will not infer the cycle period from your data — you have to state
+it, in the app's **Cycle period (s)** box or `opts.cyclePeriod`.
+
 ### Solver
 
 `opts.solver` (and the app's **Solver** dropdown) chooses between:

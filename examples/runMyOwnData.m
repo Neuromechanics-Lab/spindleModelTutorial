@@ -107,10 +107,21 @@ fprintf('Saved results to %s\n', tempdir);
 %               'firing' pushes the model through integrateAndFire_v2 first -
 %               which saturates at 250 spikes/s at dt = 1 ms, so the objective
 %               goes flat wherever the model is pinned.
-%   solver    : 'fmincon' (default) is faster and converges well on this compact
-%               4-parameter fit. 'patternsearch' is the manuscript's solver -
-%               derivative-free, so it copes better with the stepped cost you
-%               get in 'firing' mode. Worth trying if a fit looks stalled.
+%   solver    : 'fmincon' (default) is faster and converges well here.
+%               'patternsearch' is the manuscript's solver - derivative-free, so
+%               it copes better with the stepped cost you get in 'firing' mode.
+%               Worth trying if a fit looks stalled.
+%   gammaStatic : how gamma-static is modelled.
+%               'bspline-free' (default) - 5 control points across the trial,
+%                 no periodicity assumed. Covers a constant (all points equal)
+%                 and a ramp (monotonic points) as special cases, so it suits
+%                 ARBITRARY protocols. 8 parameters.
+%               'bspline-periodic' - the manuscript's construction: one cycle
+%                 tiled, last control point = first. The BETTER model when your
+%                 protocol really is cyclic, because 5 numbers then describe
+%                 every cycle. Needs opts.cyclePeriod (seconds); the tutorial
+%                 will not guess it. 8 parameters.
+%               'constant' - a single gamma-static level. 4 parameters, fastest.
 %
 % See docs/06_your_data.md and compute/meanNormRMSE.m.
 %
@@ -118,11 +129,13 @@ fprintf('Saved results to %s\n', tempdir);
 %                  'alphaAct', alphaAct, 'targetFiring', targetFiring);
 %   save(fullfile(tempdir,'myFit.mat'), '-struct', 'data2');
 %   d2  = loadUserData(fullfile(tempdir,'myFit.mat'));
-%   res = runOptFromData(d2, struct('maxIter', 20));   % fits r, fmincon
-%   % ... or spell both out:
+%   res = runOptFromData(d2, struct('maxIter', 20));   % r, fmincon, free spline
+%   % ... or spell it all out. For cyclic data prefer the periodic spline:
 %   % res = runOptFromData(d2, struct('maxIter', 20, ...
-%   %                                 'fitTarget', 'firing', ...
-%   %                                 'solver',    'patternsearch'));
+%   %                                 'fitTarget',   'receptor', ...
+%   %                                 'solver',      'patternsearch', ...
+%   %                                 'gammaStatic', 'bspline-periodic', ...
+%   %                                 'cyclePeriod', 0.64));
 %   fprintf('fitted %s with %s | cost %.3g -> %.3g\n', ...
 %           res.fitTarget, res.solver, res.fval0, res.fvalOpt);
 %   for i = 1:numel(res.names)

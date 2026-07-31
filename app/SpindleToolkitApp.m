@@ -29,6 +29,8 @@ classdef SpindleToolkitApp < SpindleAppBase
         udOptBtn
         udFitTarget                % 'what to fit' dropdown
         udSolver                   % solver dropdown
+        udGammaStatic              % gamma-static model dropdown
+        udCycle                    % cycle period (periodic mode only)
         udSaveBtn
         udPlotPanel
         udResAx     = [];          % persistent result axes (5; optimize uses 3)
@@ -419,9 +421,9 @@ classdef SpindleToolkitApp < SpindleAppBase
             % What the optimizer compares. Default is the receptor potential:
             % the cost is mean-normalized (each trace divided by its own mean),
             % so only shape is compared and the units difference cancels.
-            fitRow = uigridlayout(cg, [2 2]);
+            fitRow = uigridlayout(cg, [4 2]);
             fitRow.Layout.Row = 6;
-            fitRow.ColumnWidth = {'1.1x','1x'}; fitRow.RowHeight = {'fit','fit'};
+            fitRow.ColumnWidth = {'1.1x','1x'}; fitRow.RowHeight = repmat({'fit'}, 1, 4);
             fitRow.Padding = [0 0 0 0]; fitRow.RowSpacing = 6;
             fitRow.BackgroundColor = s.card;
             uilabel(fitRow, 'Text', 'Optimize by fitting');
@@ -432,10 +434,31 @@ classdef SpindleToolkitApp < SpindleAppBase
             obj.udSolver = uidropdown(fitRow, ...
                 'Items', {'fmincon (faster)', 'patternsearch (manuscript)'}, ...
                 'Value', 'fmincon (faster)');
-            obj.udSolver.Tooltip = ['fmincon converges better on this compact 4-parameter fit ' ...
-                'and is the default. patternsearch is what the manuscript uses - derivative-free, ' ...
-                'so it copes better with a stepped cost (which is what you get in firing mode) - ' ...
-                'and is worth trying if a fit looks like it stalled.'];
+            obj.udSolver.Tooltip = ['fmincon converges well on this fit and is the default. ' ...
+                'patternsearch is what the manuscript uses - derivative-free, so it copes better ' ...
+                'with a stepped cost (which is what you get in firing mode) - and is worth trying ' ...
+                'if a fit looks like it stalled.'];
+
+            % How gamma-STATIC is modelled. The free B-spline is the general
+            % answer - it can be a constant, a ramp, or any smooth shape - so it
+            % is the default. The periodic variant is the manuscript's, and is
+            % the better model when the protocol really is cyclic, because 5
+            % numbers then describe every cycle. It needs a cycle period, which
+            % the tutorial will not guess.
+            uilabel(fitRow, 'Text', '\gamma-static model');
+            obj.udGammaStatic = uidropdown(fitRow, 'Items', ...
+                {'B-spline, free (any protocol)', 'B-spline, periodic (gait/cyclic)', ...
+                 'constant level'}, 'Value', 'B-spline, free (any protocol)');
+            obj.udGammaStatic.Tooltip = ['Free: 5 control points across the trial, no ' ...
+                'periodicity assumed - covers constant and ramp as special cases. ' ...
+                'Periodic: one cycle tiled, as the manuscript does for gait. ' ...
+                'Constant: a single level (4 parameters instead of 8, so fastest).'];
+            obj.udGammaStatic.ValueChangedFcn = @(s2,e) obj.onGammaStaticMode();
+
+            uilabel(fitRow, 'Text', 'Cycle period (s)');
+            obj.udCycle = uispinner(fitRow, 'Limits', [0.05 10], 'Value', 0.64, ...
+                'Step', 0.01, 'Enable', 'off');
+            obj.udCycle.Tooltip = 'Seconds per cycle. Used only by the periodic B-spline.';
             obj.udFitTarget.Tooltip = ['Receptor potential: the model''s r is fitted to your ' ...
                 'recorded rate. The cost is mean-normalized, so only shape matters and the ' ...
                 'units cancel. Firing rate: pushes the model through the spike generator ' ...
@@ -579,8 +602,14 @@ classdef SpindleToolkitApp < SpindleAppBase
                 else
                     sv = 'fmincon';
                 end
+                switch obj.udGammaStatic.Value
+                    case 'B-spline, periodic (gait/cyclic)', gs = 'bspline-periodic';
+                    case 'constant level',                   gs = 'constant';
+                    otherwise,                               gs = 'bspline-free';
+                end
                 res = runOptFromData(obj.udData, struct('maxIter', 20, ...
-                    'fitTarget', ft, 'solver', sv, ...
+                    'fitTarget', ft, 'solver', sv, 'gammaStatic', gs, ...
+                    'cyclePeriod', obj.udCycle.Value, ...
                     'iterFcn', @(info) obj.onUserOptIter(info)));
                 obj.renderUserOptimize(res);
                 obj.udLastRes = res; obj.udLastKind = 'optimize';
@@ -641,6 +670,12 @@ classdef SpindleToolkitApp < SpindleAppBase
             ylabel(axCost, 'mean-normalized RMSE'); grid(axCost, 'on');
 
             obj.beautify(obj.udPlotPanel);
+        end
+
+        function onGammaStaticMode(obj)
+            % Cycle period only means anything for the periodic B-spline.
+            obj.setEnable(obj.udCycle, ...
+                strcmp(obj.udGammaStatic.Value, 'B-spline, periodic (gait/cyclic)'));
         end
 
         function saveUserRun(obj)
