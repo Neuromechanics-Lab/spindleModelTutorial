@@ -20,12 +20,21 @@ d.mtuLength = ref.mt.mtuCmd(:)';   d.hasFascicle = false; d.fascicleLength = [];
 d.alphaAct  = ref.actAlpha(:)';    % 0..1
 d.chainAct  = ref.actC(:)';        % 0..1  (so a forward run is possible)
 d.bagAct    = ref.actB(:)';        % 0..1
-if isempty(ref.t_firing)
-    d.targetFiring = zeros(1, d.n);
-else
-    d.targetFiring = movmean(interp1(ref.t_firing, ref.IFR, t, 'linear', 0), ...
-        max(3, round(0.05 / d.dt)));   % a firing rate to optimize against
-end
+% A firing rate to optimize against. It is NOT produced by pushing this run
+% through integrateAndFire_v2: that generator clips at 1/(4*dt) = 250 spikes/s,
+% and at any interesting drive level the result is pinned there for most of the
+% trace (65-90% of samples), which is an artefact of the time step rather than
+% anything a real afferent does. Fitting against a clipped target would also
+% unfairly handicap the default 'receptor' mode, which compares an UNclipped r.
+%
+% Instead the target is what an afferent with its own gain and threshold would
+% have fired: rectified-linear in the receptor potential, rate = a*(r - rThr),
+% scaled to a physiological peak. Below the spike generator's ceiling that is
+% exactly the relationship the model implies (rate = r/threshold), and it is the
+% relationship the mean-normalized cost relies on - see compute/meanNormRMSE.m.
+rThr = 0.6 * min(ref.r);                        % afferent threshold
+rate = max(0, ref.r(:)' - rThr);
+d.targetFiring = movmean(rate * (180 / max(rate)), max(3, round(0.05 / d.dt)));
 d.tendonStiffness = p.mtu.tendonStiffness;
 d.availForward = true; d.availOptimize = true;
 d.file = '(built-in example)';

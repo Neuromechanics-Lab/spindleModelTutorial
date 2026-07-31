@@ -116,8 +116,12 @@ mtData = mt.mtData;
 
 % -- Target from truth --------------------------------------------------
 [tgt_t, target, targetRs, targetRd] = simulate(xTrue);
-scaleRs = rms(targetRs) + eps;
-scaleRd = rms(targetRd) + eps;
+% Cost is MEAN-NORMALIZED, matching the manuscript
+% (objFuncWithFixedTiming_Bspline_5cp_normSmooth): each trace is divided by its
+% own mean before the RMSE, so only SHAPE is compared. rs and rd are normalized
+% and scored SEPARATELY because total r is dominated by the bag/dynamic
+% component - a single cost on r would leave the chain control points with
+% almost no leverage. See compute/meanNormRMSE.m.
 
     function c = objective(x)
         try
@@ -127,8 +131,8 @@ scaleRd = rms(targetRd) + eps;
             if any(~isfinite(fitRs)) || any(~isfinite(fitRd))
                 c = 1e6;
             else
-                c = rms(fitRs - targetRs(:)) / scaleRs ...
-                  + rms(fitRd - targetRd(:)) / scaleRd;
+                c = meanNormRMSE(fitRs, targetRs(:)) ...
+                  + meanNormRMSE(fitRd, targetRd(:));
             end
         catch
             c = 1e6;

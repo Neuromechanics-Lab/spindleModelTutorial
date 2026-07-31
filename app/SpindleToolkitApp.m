@@ -27,6 +27,7 @@ classdef SpindleToolkitApp < SpindleAppBase
         udStatus
         udFwdBtn
         udOptBtn
+        udFitTarget                % 'what to fit' dropdown
         udSaveBtn
         udPlotPanel
         udResAx     = [];          % persistent result axes (5; optimize uses 3)
@@ -148,7 +149,7 @@ classdef SpindleToolkitApp < SpindleAppBase
             obj.optTable  = uitable(outer, 'ColumnName', {'Parameter','True','Initial','Recovered','Recovery %'});
             obj.optTable.Layout.Row = 2; obj.optTable.Layout.Column = 1;
             title(obj.optAxCost,   'Cost vs iteration');
-            xlabel(obj.optAxCost, 'iteration'); ylabel(obj.optAxCost, 'RMSE cost');
+            xlabel(obj.optAxCost, 'iteration'); ylabel(obj.optAxCost, 'mean-normalized RMSE');
             % Build the cost line ONCE and update its data each iteration. Doing
             % cla + beautify + drawnow every iteration corrupts the uifigure
             % render tree and blanks every axes on the tab (all three together
@@ -368,8 +369,8 @@ classdef SpindleToolkitApp < SpindleAppBase
 
             % Left: instructions + controls
             cpanel = obj.card(g, 'Bring your own inputs'); cpanel.Layout.Column = 1;
-            cg = uigridlayout(cpanel, [9 1]);
-            cg.RowHeight = {'fit','fit','fit','fit','fit','fit','fit','fit','1x'};
+            cg = uigridlayout(cpanel, [10 1]);
+            cg.RowHeight = {'fit','fit','fit','fit','fit','fit','fit','fit','fit','1x'};
             cg.Padding = [12 12 12 12]; cg.RowSpacing = 8; cg.BackgroundColor = s.card;
 
             h = uihtml(cg); h.HTMLSource = obj.userDataHTML();  h.Layout.Row = 1;
@@ -391,19 +392,44 @@ classdef SpindleToolkitApp < SpindleAppBase
                 'Enable', 'off', 'BackgroundColor', s.tagInput, 'FontColor', [1 1 1], ...
                 'ButtonPushedFcn', @(src,e) obj.runUserForward());
             obj.udFwdBtn.Layout.Row = 5;
+            % What the optimizer compares. Default is the receptor potential:
+            % the cost is mean-normalized (each trace divided by its own mean),
+            % so only shape is compared and the units difference cancels.
+            fitRow = uigridlayout(cg, [1 2]);
+            fitRow.Layout.Row = 6;
+            fitRow.ColumnWidth = {'1.1x','1x'}; fitRow.Padding = [0 0 0 0];
+            fitRow.BackgroundColor = s.card;
+            uilabel(fitRow, 'Text', 'Optimize by fitting');
+            obj.udFitTarget = uidropdown(fitRow, ...
+                'Items', {'receptor potential (recommended)', 'firing rate'}, ...
+                'Value', 'receptor potential (recommended)');
+            obj.udFitTarget.Tooltip = ['Receptor potential: the model''s r is fitted to your ' ...
+                'recorded rate. The cost is mean-normalized, so only shape matters and the ' ...
+                'units cancel. Firing rate: pushes the model through the spike generator ' ...
+                'first, which saturates at 250 spikes/s at dt = 1 ms.'];
+
+            note = uilabel(cg, 'Text', ['By default the model''s RECEPTOR POTENTIAL is fitted to ' ...
+                'your recorded firing. The cost divides each trace by its own mean, so only shape ' ...
+                'is compared - and below the spike generator''s ceiling firing is proportional to r, ' ...
+                'so the shapes agree. Simha et al. find the normalized fit gives similar results ' ...
+                'either way, and it keeps the 250 spikes/s ceiling out of the objective. ' ...
+                'See docs/06_your_data.md.'], 'WordWrap', 'on', ...
+                'FontAngle', 'italic', 'FontColor', s.muted, 'FontSize', 11);
+            note.Layout.Row = 7;
+
             obj.udOptBtn = uibutton(cg, 'Text', 'Optimize gamma  ->  drive', 'FontWeight', 'bold', ...
                 'Enable', 'off', 'BackgroundColor', s.tagOutput, 'FontColor', [1 1 1], ...
                 'ButtonPushedFcn', @(src,e) obj.runUserOptimize());
-            obj.udOptBtn.Layout.Row = 6;
+            obj.udOptBtn.Layout.Row = 8;
 
             obj.udSaveBtn = uibutton(cg, 'Text', 'Save results...', ...
                 'Enable', 'off', 'BackgroundColor', [0.93 0.94 0.96], 'FontColor', s.navy, ...
                 'ButtonPushedFcn', @(src,e) obj.saveUserRun());
-            obj.udSaveBtn.Layout.Row = 7;
+            obj.udSaveBtn.Layout.Row = 9;
             obj.udSaveBtn.Tooltip = 'Write the last run to a .mat (everything) and a .csv (time series)';
 
             obj.udStatus = uilabel(cg, 'Text', 'Ready.', 'WordWrap', 'on', 'FontColor', s.muted);
-            obj.udStatus.Layout.Row = 8;
+            obj.udStatus.Layout.Row = 10;
 
             % Right: results. Build the 5 result axes ONCE (persistent, always
             % visible) - the same pattern the Gamma-optimization tab uses. Freshly
@@ -505,12 +531,17 @@ classdef SpindleToolkitApp < SpindleAppBase
         function runUserOptimize(obj)
             if isempty(obj.udData), return; end
             obj.setBusy(true); obj.udOptBtn.Enable = 'off'; obj.udFwdBtn.Enable = 'off';
-            obj.udStatus.Text = 'Optimizing gamma to match your firing (~1-2 min)...'; drawnow;
+            obj.udStatus.Text = 'Optimizing gamma to match your recording (~1-2 min)...'; drawnow;
             try
                 % Run first (status-only live updates), THEN build + plot the
                 % results synchronously so the axes lay out reliably.
+                if startsWith(obj.udFitTarget.Value, 'receptor')
+                    ft = 'receptor';
+                else
+                    ft = 'firing';
+                end
                 res = runOptFromData(obj.udData, struct('maxIter', 20, ...
-                    'iterFcn', @(info) obj.onUserOptIter(info)));
+                    'fitTarget', ft, 'iterFcn', @(info) obj.onUserOptIter(info)));
                 obj.renderUserOptimize(res);
                 obj.udLastRes = res; obj.udLastKind = 'optimize';
                 obj.setEnable(obj.udSaveBtn, true);
@@ -531,14 +562,23 @@ classdef SpindleToolkitApp < SpindleAppBase
             a(4).Visible = 'off'; a(5).Visible = 'off';   % optimize uses 3 panels
             a(1).Parent.Parent.RowHeight = {'1x','1x','1x', 0, 0};    % panel -> grid
 
-            % Fit vs target firing
+            % Fit vs target. Both traces are shown MEAN-NORMALIZED, because that
+            % is what the cost actually minimized - drawing them in raw units
+            % would imply an absolute match that was never fitted.
+            nrm = @(v) v(:)' / mean(v(isfinite(v)));
             axFit = a(1);
-            plot(axFit, res.t, res.target, 'Color', obj.S.muted, 'LineWidth', obj.S.lw); hold(axFit, 'on');
-            plot(axFit, res.t, res.fit0, '--', 'Color', obj.S.tagOutput, 'LineWidth', obj.S.lwThin);
-            plot(axFit, res.t, res.fitOpt, 'Color', obj.S.green, 'LineWidth', obj.S.lw); hold(axFit, 'off');
-            title(axFit, 'Your Ia firing vs model fit'); ylabel(axFit, 'firing (spikes/s)');
-            legend(axFit, {'your firing','initial guess','optimized fit'}, 'Location', 'best');
-            obj.padY(axFit, [res.target(:); res.fitOpt(:)]); xlim(axFit, [res.t(1) res.t(end)]);
+            plot(axFit, res.t, nrm(res.target), 'Color', obj.S.muted, 'LineWidth', obj.S.lw); hold(axFit, 'on');
+            plot(axFit, res.t, nrm(res.fit0), '--', 'Color', obj.S.tagOutput, 'LineWidth', obj.S.lwThin);
+            plot(axFit, res.t, nrm(res.fitOpt), 'Color', obj.S.green, 'LineWidth', obj.S.lw); hold(axFit, 'off');
+            if strcmp(res.fitTarget, 'receptor')
+                title(axFit, 'Your Ia firing vs model receptor potential (shape)');
+                legend(axFit, {'your firing','initial guess (r)','optimized fit (r)'}, 'Location', 'best');
+            else
+                title(axFit, 'Your Ia firing vs model firing (shape)');
+                legend(axFit, {'your firing','initial guess','optimized fit'}, 'Location', 'best');
+            end
+            ylabel(axFit, 'mean-normalized');
+            obj.padY(axFit, [nrm(res.target)'; nrm(res.fitOpt)']); xlim(axFit, [res.t(1) res.t(end)]);
             obj.tagAxes(axFit, 'output');
 
             % Recovered gamma drive (pCa)
@@ -558,7 +598,7 @@ classdef SpindleToolkitApp < SpindleAppBase
                     'LineWidth', 1.8, 'Color', obj.S.accent);
             end
             title(axCost, 'Cost vs iteration'); xlabel(axCost, 'iteration');
-            ylabel(axCost, 'RMSE (spikes/s)'); grid(axCost, 'on');
+            ylabel(axCost, 'mean-normalized RMSE'); grid(axCost, 'on');
 
             obj.beautify(obj.udPlotPanel);
         end
@@ -623,7 +663,9 @@ classdef SpindleToolkitApp < SpindleAppBase
 '<li class="k"><code>targetFiring</code> - Ia rate (spikes/s) &rarr; to OPTIMIZE &gamma;</li>', ...
 '</ul>', ...
 '<b>Forward:</b> length + activations &rarr; forces and the Ia receptor potential.<br>', ...
-'<b>Optimize:</b> length + your firing &rarr; the &gamma; drive that reproduces it.', ...
+'<b>Optimize:</b> length + your recorded Ia firing &rarr; the &gamma; drive that reproduces it. ', ...
+'The cost is mean-normalized (shape only), so the model&rsquo;s receptor potential can be fitted ', ...
+'directly to your firing rate; a switch lets you fit model firing instead.', ...
 '</body></html>'];
         end
     end

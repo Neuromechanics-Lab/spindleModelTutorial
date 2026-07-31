@@ -91,16 +91,26 @@ fprintf('Saved results to %s\n', tempdir);
 
 %% 6. OPTIMIZE instead: length + your firing -> gamma drive
 % Uncomment once you have a recorded Ia rate in `targetFiring`. This fits a
-% compact gamma drive (static level, burst magnitude, burst on/off) by
-% minimising RMSE against your firing. Each evaluation runs the full model, so
-% expect ~1-2 minutes.
+% compact gamma drive (static level, burst magnitude, burst on/off) to your
+% recording. Each evaluation runs the full model, so expect ~1-2 minutes.
+%
+% THE COST IS MEAN-NORMALIZED: each trace is divided by its own mean before the
+% RMSE, so only SHAPE is compared - the same cost the manuscript minimises. That
+% is what lets the model's RECEPTOR POTENTIAL be fitted to your recorded FIRING
+% RATE (the default): below the spike generator's ceiling the two are
+% proportional, and a proportional factor is exactly what normalisation removes.
+% It also keeps the generator's 250 spikes/s ceiling out of the objective.
+%
+% To fit model FIRING instead, pass fitTarget = 'firing'. See
+% docs/06_your_data.md and compute/meanNormRMSE.m.
 %
 %   data2 = struct('t', t, 'mtuLength', mtuLength, 'restingLength', restingLength, ...
 %                  'alphaAct', alphaAct, 'targetFiring', targetFiring);
 %   save(fullfile(tempdir,'myFit.mat'), '-struct', 'data2');
 %   d2  = loadUserData(fullfile(tempdir,'myFit.mat'));
-%   res = runOptFromData(d2, struct('maxIter', 20));
-%   fprintf('cost %.3g -> %.3g\n', res.fval0, res.fvalOpt);
+%   res = runOptFromData(d2, struct('maxIter', 20));            % fits r (default)
+%   % res = runOptFromData(d2, struct('maxIter', 20, 'fitTarget', 'firing'));
+%   fprintf('fitted %s | cost %.3g -> %.3g\n', res.fitTarget, res.fval0, res.fvalOpt);
 %   for i = 1:numel(res.names)
 %       fprintf('  %-32s %.3f\n', res.labels{i}, res.xOpt(i));
 %   end

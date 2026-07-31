@@ -135,6 +135,20 @@ nfail = nfail + check('forward-from-data produces finite firing-ready output', .
 nfail = nfail + check('forward-from-data activation traces are in [0,1]', ...
     all(uo.actB >= -1e-9 & uo.actB <= 1+1e-9));
 
+% ---- 7b. Both optimize-from-data modes, and the shared cost -----------
+% The cost is mean-normalized (shape only), which is what lets the model's
+% receptor potential be fitted to a recorded firing rate at all.
+nfail = nfail + check('mean-normalized cost is scale-invariant', ...
+    abs(meanNormRMSE(3.7 * uo.r, uo.r)) < 1e-12);
+nfail = nfail + check('mean-normalized cost is non-zero for a different shape', ...
+    meanNormRMSE(uo.r, uo.r(end:-1:1)) > 1e-3);
+for ft = {'receptor', 'firing'}
+    ro = runOptFromData(d, struct('maxIter', 4, 'fitTarget', ft{1}));
+    nfail = nfail + check(sprintf('optimize-from-data runs with fitTarget=%s', ft{1}), ...
+        isfinite(ro.fvalOpt) && ro.fvalOpt <= ro.fval0 && strcmp(ro.fitTarget, ft{1}));
+    fprintf('   fit %-9s: cost %.4g -> %.4g\n', ft{1}, ro.fval0, ro.fvalOpt);
+end
+
 % ---- 8. User data in non-nm units (restingLength normalisation) -------
 tu = 0:0.001:1.0;
 mm = struct('t', tu, 'mtuLength', 30 + 2.4*max(0, min(1,(tu-0.3)/0.5)), ...

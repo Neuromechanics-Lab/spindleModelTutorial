@@ -43,6 +43,22 @@ are driving the published model.
 
 ---
 
+## How the fits are scored
+
+Both optimizers minimize a **mean-normalized** RMSE — each trace divided by its own
+mean, then RMSE — which is the cost the manuscript uses
+(`objFuncWithFixedTiming_Bspline_5cp_normSmooth.m`). Comparing absolute traces
+penalizes any bag drive that lifts the model above the data, so the optimizer turns
+gamma-dynamic off and the burst timing stops being identifiable; normalizing both
+traces removes that.
+
+Because the cost is shape-only, **Your data** fits the model's *receptor potential*
+to your recorded *firing rate* by default: below the spike generator's ceiling the
+two are proportional, and that proportionality is what normalization cancels. It
+also keeps the 250 spikes/s ceiling out of the objective. A switch (**Optimize by
+fitting**, or `opts.fitTarget = 'firing'`) fits model firing instead if you want it.
+Details in [docs/06_your_data.md](docs/06_your_data.md).
+
 ## Why the app stops at the receptor potential
 
 The model's output is the Ia **receptor potential** `r`. Turning `r` into spikes

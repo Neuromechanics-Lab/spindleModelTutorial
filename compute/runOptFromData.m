@@ -2,8 +2,24 @@ function result = runOptFromData(d, opts)
 % runOptFromData  Infer gamma drive that reproduces a user's recorded Ia firing.
 %
 %   result = runOptFromData(d, opts) takes a normalized user-data struct (from
-%   loadUserData) providing length + a target Ia firing rate, and optimizes the
-%   fusimotor (gamma) drive so the model firing matches the target.
+%   loadUserData) providing length + a recorded Ia firing rate, and optimizes the
+%   fusimotor (gamma) drive so the model reproduces it.
+%
+%   WHAT IS COMPARED (opts.fitTarget):
+%     'receptor' (DEFAULT) - the model's RECEPTOR POTENTIAL r is fitted to your
+%                 recorded firing rate. That sounds like a units mismatch, but the
+%                 cost is MEAN-NORMALIZED (see meanNormRMSE): each trace is divided
+%                 by its own mean, so only shape is compared and any overall gain
+%                 cancels. Below the spike generator's ceiling firing IS
+%                 proportional to r (rate = r/threshold), so the shapes agree -
+%                 and this keeps the refractory ceiling and the 1/(k*dt) rate
+%                 quantisation out of the objective entirely.
+%     'firing'  - push the model through integrateAndFire_v2 and fit the model's
+%                 firing rate instead. Same mean-normalized cost. Use this if you
+%                 specifically want the spike generator in the loop; be aware it
+%                 saturates at 1/(4*dt) = 250 spikes/s at dt = 1 ms, which flattens
+%                 the objective wherever the model is pinned.
+%   See docs/06_your_data.md.
 %
 %   To stay robust for ARBITRARY user protocols (not just periodic gait data), it
 %   fits a compact, general gamma parameterization rather than the periodic
@@ -16,17 +32,24 @@ function result = runOptFromData(d, opts)
 %   fascicle trace directly) does not depend on gamma, so it is computed ONCE and
 %   reused on every objective evaluation.
 %
-%   opts (optional): .maxIter (default 20), .iterFcn (callback for live updates).
+%   opts (optional): .maxIter (default 20), .iterFcn (callback for live updates),
+%   .fitTarget ('receptor' | 'firing', default 'receptor').
 %
-%   result fields: .t, .target, .fit0, .fitOpt (firing rates on the user grid),
+%   result fields: .t, .target, .fit0, .fitOpt (on the user grid, in whatever
+%   quantity was fitted), .fitTarget, .fitUnits,
 %   .x0, .xOpt, .names, .labels, .history, .fval0, .fvalOpt, and .gammaOpt
 %   (recovered gamma pCa traces for plotting), plus .outOpt (full model output).
 
 if nargin < 2, opts = struct(); end
 t  = d.t(:)';
 n  = d.n;
-maxIter = getOpt(opts, 'maxIter', 20);
-iterFcn = getOpt(opts, 'iterFcn', []);
+maxIter   = getOpt(opts, 'maxIter', 20);
+iterFcn   = getOpt(opts, 'iterFcn', []);
+fitTarget = lower(getOpt(opts, 'fitTarget', 'receptor'));
+if ~ismember(fitTarget, {'receptor','firing'})
+    error('runOptFromData:badFitTarget', ...
+        'opts.fitTarget must be ''receptor'' or ''firing'' (got ''%s'').', fitTarget);
+end
 
 if isempty(d.targetFiring)
     error('runOptFromData:noTarget', 'This file has no targetFiring to optimize against.');
@@ -54,7 +77,8 @@ tr = defaultTutorialParams().trans;
 smoothWin = max(3, round(0.05 / d.dt));           % ~50 ms
 target = movmean(fillmissing(d.targetFiring(:)', 'linear'), smoothWin);
 
-    function [rate, out] = modelRate(x)
+    function [sig, out] = modelSignal(x)
+        % Returns whichever quantity is being compared, on the user's grid.
         g = struct('chainMode','constant','chainOn',t(1),'chain_pCa',x(1), ...
             'chain_amp',0,'chain_freq',1,'chain_phase',0, ...
             'bagBaseline',9,'bagBurst',x(2),'bagOn',x(3),'bagOff',x(4));
@@ -64,20 +88,28 @@ target = movmean(fillmissing(d.targetFiring(:)', 'linear'), smoothWin);
             tr.occlusion, tr.threshold);
         [tf, ifr] = integrateAndFire_v2(r_t, r, 1);
         ok = isfinite(ifr); tf = tf(ok); ifr = ifr(ok);   % 1st spike has no ISI
-        if isempty(tf)
-            rate = zeros(1, n);
+        if strcmp(fitTarget, 'receptor')
+            % The receptor potential, smoothed the same way the target is, so
+            % the two traces are treated identically before normalization.
+            sig = movmean(interp1(r_t(:), r(:), t, 'linear', 'extrap'), smoothWin);
+        elseif isempty(tf)
+            sig = zeros(1, n);
         else
-            rate = movmean(interp1(tf, ifr, t, 'linear', 0), smoothWin);
+            sig = movmean(interp1(tf, ifr, t, 'linear', 0), smoothWin);
         end
         out = struct('r_t', r_t, 'r', r, 't_firing', tf, 'IFR', ifr, ...
             'pCaB', sB.pCa, 'pCaC', sC.pCa);
     end
 
     function c = objective(x)
+        % MEAN-NORMALIZED RMSE, as the manuscript does it: each trace divided by
+        % its own mean, so only shape is compared. That is what allows the model
+        % receptor potential to be fitted to a recorded firing rate at all, and
+        % it is also what keeps gamma-dynamic identifiable - an absolute cost
+        % penalises any bag drive that lifts the model above the data, so the
+        % optimizer simply turns it off.
         try
-            rate = modelRate(x);
-            c = sqrt(mean((rate - target).^2));
-            if ~isfinite(c), c = 1e6; end
+            c = meanNormRMSE(modelSignal(x), target);
         catch
             c = 1e6;
         end
@@ -110,11 +142,20 @@ options = optimoptions('fmincon', 'Algorithm', 'sqp', 'Display', 'off', ...
 fval0 = objective(x0);
 [xOpt, fvalOpt] = fmincon(@objective, x0, [], [], [], [], lb, ub, [], options);
 
-[rate0, ~]    = modelRate(x0);
-[rateOpt, oO] = modelRate(xOpt);
+[sig0, ~]    = modelSignal(x0);
+[sigOpt, oO] = modelSignal(xOpt);
 
 result.t = t; result.target = target;
-result.fit0 = rate0; result.fitOpt = rateOpt;
+result.fit0 = sig0; result.fitOpt = sigOpt;
+% What was compared, so callers can label the axis honestly. The traces are
+% plotted mean-normalized because that is what the cost actually minimized -
+% showing them in raw units would imply an absolute match that was never fitted.
+result.fitTarget = fitTarget;
+if strcmp(fitTarget, 'receptor')
+    result.fitUnits = 'receptor potential r (mean-normalized)';
+else
+    result.fitUnits = 'firing rate (mean-normalized)';
+end
 result.x0 = x0; result.xOpt = xOpt; result.names = names; result.labels = labels;
 result.history = history; result.fval0 = fval0; result.fvalOpt = fvalOpt;
 result.gammaOpt = struct('t', t, 'chainPca', oO.pCaC(:), 'bagPca', oO.pCaB(:));

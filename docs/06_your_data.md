@@ -65,7 +65,8 @@ compact, general gamma parameterization:
 - γ-dynamic burst magnitude (bag pCa),
 - burst onset and offset (s),
 
-by minimizing the RMSE between the model's (smoothed) firing rate and your
+by minimizing a **mean-normalized** RMSE against your recording — see below —
+between the model's response and your
 target. This differs from the `Gamma optimization` tab, which fits the periodic
 5-control-point B-spline used for the manuscript's gait data.
 
@@ -84,3 +85,45 @@ res = runOptFromData(d2);              % optimize: -> res.xOpt, res.gammaOpt, ..
 
 `exampleUserData()` returns a ready-made dataset in this format (the tab's
 **Load built-in example** button), useful as a template.
+
+
+## What the optimizer actually compares
+
+The cost is **mean-normalized**: each trace is divided by its own mean before the
+RMSE, so only *shape* is compared.
+
+```matlab
+mN = model / mean(model);   dN = data / mean(data);
+cost = sqrt(mean((mN - dN).^2));
+```
+
+This is the cost the manuscript minimizes
+(`objFuncWithFixedTiming_Bspline_5cp_normSmooth.m` in `gammaDriveOptimization`),
+and it matters for a specific reason. Comparing **absolute** traces makes the cost
+punish any difference in overall level, and that punishment lands on the
+gamma-**dynamic** drive: once gamma-static already matches the recorded amplitude,
+adding bag drive only pushes the model above the data, so the optimizer turns it
+off and the burst timing stops being identifiable. Normalizing both traces removes
+that penalty.
+
+### Why the default fits the receptor potential
+
+Because the cost is shape-only, the model's **receptor potential** `r` can be
+fitted directly to your recorded **firing rate**, despite the units differing.
+Below the spike generator's ceiling the two are proportional — `rate = r/threshold`
+— and a proportional factor is exactly what mean-normalization removes.
+
+Simha et al. find the normalized fit gives similar answers either way, and fitting
+`r` keeps the spike generator's limits (a 250 spikes/s ceiling at `dt = 1 ms`, and
+rate quantization to `1/(k*dt)`) out of the objective entirely. Where the model's
+firing is pinned at the ceiling, the objective is flat and the fit has nothing to
+work with; `r` is never pinned.
+
+If you want the spike generator in the loop anyway, switch **Optimize by fitting**
+to *firing rate* in the app, or pass `opts.fitTarget = 'firing'` in code. The cost
+is mean-normalized in both cases.
+
+> The built-in example's `targetFiring` is generated as a rectified-linear function
+> of `r` (`rate = a*(r - threshold)`), not by running the toolbox spike generator —
+> which would clip 65–90% of the trace at 250 spikes/s and make the example
+> unrepresentative of a real recording. See `compute/exampleUserData.m`.
