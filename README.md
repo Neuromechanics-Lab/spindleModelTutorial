@@ -45,9 +45,14 @@ are driving the published model.
 
 ## How the fits are scored
 
-Both optimizers minimize a **mean-normalized** RMSE — each trace divided by its own
-mean, then RMSE — which is the cost the manuscript uses
-(`objFuncWithFixedTiming_Bspline_5cp_normSmooth.m`). Comparing absolute traces
+Both optimizers minimize a **mean-normalized** RMSE on a **single** trace — each
+divided by its own mean, then RMSE — which is the cost the manuscript uses
+(`objFuncWithFixedTiming_Bspline_5cp_normSmooth.m`). One combined signal, because
+that is all a real recording gives you: the gamma-optimization demo could score
+its static and dynamic components separately (its target is simulated, so it knows
+both), but that would hand the demo information no experiment has. The honest
+consequence is that the bag burst recovers and the gamma-static waveform largely
+does not — see [docs/05_gamma_optimization.md](docs/05_gamma_optimization.md). Comparing absolute traces
 penalizes any bag drive that lifts the model above the data, so the optimizer turns
 gamma-dynamic off and the burst timing stops being identifiable; normalizing both
 traces removes that.

@@ -53,13 +53,43 @@ see how faithfully the drive is recovered.
 
 ### Objective
 
-The total Ia is dominated by the bag fiber's large dynamic response, so a plain
-RMSE on `r` would give the chain (gamma-static) parameters little leverage. The
-objective therefore compares the **static (`r_s`) and dynamic (`r_d`) components
-separately, each normalized** by its own scale, so both the gamma-static waveform
-and the bag magnitude are identifiable. With a long-enough horizon (a couple of
-gait cycles), all seven parameters recover to ~95–100% and the cost falls close to
-zero.
+The cost is a **mean-normalized RMSE on the total receptor potential** — each
+trace divided by its own mean, then RMSE — which is what the manuscript minimizes
+(`objFuncWithFixedTiming_Bspline_5cp_normSmooth.m`). One combined trace, scored
+once, because that is all a real recording gives you.
+
+### What recovers, and what does not
+
+**The bag burst recovers; the gamma-static waveform does not.** The demo shows
+this rather than hiding it:
+
+| parameter | % of initial error closed |
+|---|---|
+| bag burst magnitude | ~99% |
+| the five chain control points | ~0% (they barely leave their starting value) |
+
+That is a property of the signal, not a failure of the optimizer. The total `r` is
+dominated by the bag: `rms(r_d)` is ~5× `rms(r_s)` in this protocol, and the cost
+landscape shows the same imbalance directly —
+
+| perturbation from truth | cost |
+|---|---|
+| bag ±0.2 pCa | 0.137 / 0.172 |
+| one control point ±0.2 pCa | 0.010 / 0.014 |
+| flatten **all five** control points | 0.066 |
+
+Discarding the entire gamma-static waveform costs less than a 0.2 pCa error in
+the bag. The chain parameters do move the cost monotonically, so they are not
+strictly unidentifiable — but with ~12× less leverage, a gradient search spends
+its budget on the bag and leaves them where they started. This is why the
+manuscript uses a derivative-free search (`patternsearch`) over many cycles of
+data, with an outer grid over timing.
+
+> An earlier version of this demo scored `r_s` and `r_d` **separately**, which
+> recovered all seven parameters to 95–100%. That was only possible because a
+> self-generated target can be decomposed into its static and dynamic parts — a
+> real recording is one signal and cannot be. It was giving the demo information
+> no experiment has, so it was removed.
 
 ### Notes on identifiability and speed
 

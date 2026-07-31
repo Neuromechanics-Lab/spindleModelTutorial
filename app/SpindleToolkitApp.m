@@ -111,9 +111,15 @@ classdef SpindleToolkitApp < SpindleAppBase
 
             note = uilabel(cg, 'Text', ['The target is self-generated, so the true gamma waveform is known: ' ...
                 'it is drawn dashed on the left and redraws as you change these settings, before you run ' ...
-                'anything. Burst TIMING is held fixed (the manuscript optimizes it in an outer grid); it is ' ...
-                'hard to identify from a sharp transient. Each objective evaluation runs the full model, ' ...
-                'so a fit takes ~1-2 min.'], 'WordWrap', 'on', ...
+                'anything. Burst TIMING is held fixed (the manuscript optimizes it in an outer grid). ' ...
+                'Each objective evaluation runs the full model, so a fit takes ~1-2 min.' newline newline ...
+                'EXPECT THE BAG BURST TO RECOVER AND THE CHAIN WAVEFORM NOT TO. The cost sees one ' ...
+                'combined trace, as a real recording would, and the bag dominates it: perturbing the bag ' ...
+                'by 0.2 pCa costs ~12x what perturbing a control point by 0.2 does, and flattening the ' ...
+                'whole gamma-static waveform costs less than a 0.2 pCa bag error. That weak leverage is ' ...
+                'a real property of the signal, not a bug in the fit - it is why the manuscript uses a ' ...
+                'derivative-free search over many cycles of data. "% of error closed" is 0 for a ' ...
+                'parameter that never moved.'], 'WordWrap', 'on', ...
                 'FontAngle', 'italic', 'FontColor', obj.S.muted);
             note.Layout.Row = r; note.Layout.Column = [1 2];
 
@@ -146,7 +152,7 @@ classdef SpindleToolkitApp < SpindleAppBase
             obj.optAxGammaD = obj.axInPanel(pg, 2, 1);
             obj.optAxFit    = obj.axInPanel(pg, 1, 2);
             obj.optAxCost   = obj.axInPanel(pg, 2, 2);
-            obj.optTable  = uitable(outer, 'ColumnName', {'Parameter','True','Initial','Recovered','Recovery %'});
+            obj.optTable  = uitable(outer, 'ColumnName', {'Parameter','True','Initial','Recovered','% of error closed'});
             obj.optTable.Layout.Row = 2; obj.optTable.Layout.Column = 1;
             title(obj.optAxCost,   'Cost vs iteration');
             xlabel(obj.optAxCost, 'iteration'); ylabel(obj.optAxCost, 'mean-normalized RMSE');
@@ -341,17 +347,21 @@ classdef SpindleToolkitApp < SpindleAppBase
             data = cell(numel(res.names), 5);
             for i = 1:numel(res.names)
                 switch res.names{i}
-                    case 'bagPca',                  cv = pcaB2pct; span = 100;
-                    case {'cp1','cp2','cp3','cp4','cp5'}, cv = pcaC2pct; span = 100;
-                    otherwise                       % phase, already in seconds
-                        cv = @(v) v; span = res.ub(i) - res.lb(i);
+                    case 'bagPca',                  cv = pcaB2pct;
+                    case {'cp1','cp2','cp3','cp4','cp5'}, cv = pcaC2pct;
+                    otherwise,                      cv = @(v) v;   % phase, in seconds
                 end
                 tv = cv(res.xTrue(i)); iv = cv(res.x0(i)); ov = cv(res.xOpt(i));
                 data{i,1} = labels{i};
                 data{i,2} = round(tv, 2);
                 data{i,3} = round(iv, 2);
                 data{i,4} = round(ov, 2);
-                data{i,5} = round(100 * (1 - abs(ov - tv) / span), 1);
+                % Fraction of the INITIAL error closed: 0% = never moved.
+                if abs(iv - tv) < 1e-9
+                    data{i,5} = NaN;      % started at the answer: nothing to close
+                else
+                    data{i,5} = round(100 * (1 - abs(ov - tv) / abs(iv - tv)), 1);
+                end
             end
             obj.optTable.Data = data;
             obj.beautify(obj.optAxFit.Parent.Parent);   % the axes grid, not its panel

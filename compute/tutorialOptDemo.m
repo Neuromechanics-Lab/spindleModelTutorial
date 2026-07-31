@@ -115,25 +115,23 @@ mtData = mt.mtData;
     end
 
 % -- Target from truth --------------------------------------------------
-[tgt_t, target, targetRs, targetRd] = simulate(xTrue);
-% Cost is MEAN-NORMALIZED, matching the manuscript
-% (objFuncWithFixedTiming_Bspline_5cp_normSmooth): each trace is divided by its
-% own mean before the RMSE, so only SHAPE is compared. rs and rd are normalized
-% and scored SEPARATELY because total r is dominated by the bag/dynamic
-% component - a single cost on r would leave the chain control points with
-% almost no leverage. See compute/meanNormRMSE.m.
+[tgt_t, target] = simulate(xTrue);
+% Cost is a single MEAN-NORMALIZED RMSE on the TOTAL receptor potential, exactly
+% as the manuscript scores one recorded trace
+% (objFuncWithFixedTiming_Bspline_5cp_normSmooth). See compute/meanNormRMSE.m.
+%
+% An earlier version scored rs and rd SEPARATELY. That recovered the parameters
+% far better - but only because a self-generated target lets you decompose it
+% into its static and dynamic parts. A real recording is one signal and cannot be
+% split, so scoring the components separately was giving this demo information no
+% experiment has, and flattering the result. Whatever identifiability the single
+% combined signal supports is the honest answer, and is what this now shows.
 
     function c = objective(x)
         try
-            [rt, ~, rs, rd] = simulate(x);
-            fitRs = interp1(rt(:), rs(:), tgt_t(:), 'linear', 'extrap');
-            fitRd = interp1(rt(:), rd(:), tgt_t(:), 'linear', 'extrap');
-            if any(~isfinite(fitRs)) || any(~isfinite(fitRd))
-                c = 1e6;
-            else
-                c = meanNormRMSE(fitRs, targetRs(:)) ...
-                  + meanNormRMSE(fitRd, targetRd(:));
-            end
+            [rt, rr] = simulate(x);
+            fitR = interp1(rt(:), rr(:), tgt_t(:), 'linear', 'extrap');
+            c = meanNormRMSE(fitR, target(:));
         catch
             c = 1e6;
         end
@@ -197,7 +195,16 @@ result.fit0     = interp1(t0(:), fit0(:), tgt_t(:), 'linear', 'extrap');
 result.fitOpt   = interp1(tO(:), fitOpt(:), tgt_t(:), 'linear', 'extrap');
 result.fval0    = fval0;
 result.fvalOpt  = fvalOpt;
-result.recoveryPct = 100 * (1 - abs(xOpt - xTrue) ./ (ub - lb));
+% Recovery = how much of the INITIAL error the fit actually closed, not how
+% close the answer is to truth relative to the bound range. The old form gave a
+% parameter that never moved 80-98% simply because the bounds are wide, which
+% flattered exactly the parameters the fit fails to identify. 0% now means "did
+% not move", 100% means "nailed it", negative means "moved away".
+initErr = abs(x0 - xTrue);
+result.recoveryPct = 100 * (1 - abs(xOpt - xTrue) ./ initErr);
+% A parameter that STARTED at the right answer has no error to close, so the
+% fraction is undefined rather than 100%. Mark it NaN instead of dividing by ~0.
+result.recoveryPct(initErr < 1e-3 * (ub - lb)) = NaN;
 result.gammaTrue = gammaTrue;
 result.gammaOpt  = gammaOpt;
 result.cycle_period = cycle_period;

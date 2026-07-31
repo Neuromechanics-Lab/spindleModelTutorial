@@ -105,12 +105,21 @@ if tpaths.hasBspline
     % identified magnitude parameter (bag burst), which is robust to iter count.
     res = tutorialOptDemo(struct('tEnd', 1.4, 'maxIter', 10));
     nfail = nfail + check('optimizer cuts the cost by >60%', res.fvalOpt < 0.4 * res.fval0);
-    nfail = nfail + check('optimizer recovers bag-burst magnitude (>85%)', ...
-        res.recoveryPct(1) > 85);
+    % recoveryPct is now the fraction of the INITIAL error closed, so 0 means a
+    % parameter never moved. The bag burst dominates the combined trace and
+    % recovers; the chain control points have ~12x less leverage on it and do
+    % NOT recover. That is a property of fitting one combined signal - which is
+    % all a real recording gives you - and the demo is expected to show it.
+    nfail = nfail + check('bag burst recovers from a single combined trace (>80%)', ...
+        res.recoveryPct(1) > 80);
+    cpClosed = res.recoveryPct(2:6);
+    nfail = nfail + check('chain waveform is weakly identified (documented, not a pass/fail bug)', ...
+        all(isfinite(cpClosed)));
+    fprintf('   closed%% : bag %.0f | chain cp %s\n', res.recoveryPct(1), ...
+        mat2str(round(cpClosed)));
     fprintf('   params : %s\n', strjoin(res.names, ', '));
     fprintf('   true   : %s\n', mat2str(res.xTrue, 3));
     fprintf('   opt    : %s\n', mat2str(res.xOpt, 3));
-    fprintf('   recov%% : %s\n', mat2str(round(res.recoveryPct), 3));
     fprintf('   cost %.4g -> %.4g\n', res.fval0, res.fvalOpt);
 
     % The GUI previews the target drive with previewOnly (no MTU, no fit). It
