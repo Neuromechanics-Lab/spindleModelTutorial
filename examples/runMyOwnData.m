@@ -7,7 +7,7 @@
 % Model: Simha et al. (2026), doi:10.64898/2026.07.03.736206
 %
 % Two things you can do:
-%   FORWARD   length + activations  -> fiber forces, receptor potential, firing
+%   FORWARD   length + activations  -> fiber forces + Ia receptor potential
 %   OPTIMIZE  length + your Ia firing -> the gamma drive that reproduces it
 %
 % Run this file as-is first: it fabricates a small example so you can see the
@@ -50,12 +50,12 @@ d = loadUserData(tmpFile);      % validates, normalises units, reports what's po
 fprintf('Loaded %d samples at dt = %.4g s. Forward: %d, Optimize: %d\n', ...
     d.n, d.dt, d.availForward, d.availOptimize);
 
-%% 3. FORWARD RUN: length + activations -> firing
+%% 3. FORWARD RUN: length + activations -> receptor potential
 out = runForwardFromData(d);
 
 fprintf('Peak bag force      : %.3g N/m^2\n', max(out.bag.hs_force));
 fprintf('Peak receptor pot.  : %.3g a.u.\n',  max(out.r));
-fprintf('Firing rate range   : %.0f - %.0f spikes/s\n', min(out.IFR), max(out.IFR));
+fprintf('Receptor potential  : %.2f - %.2f (a.u.)\n', min(out.r), max(out.r));
 
 % Everything you might want is in `out`:
 %   out.t, out.L (fascicle length, nm), out.mt.mtuCmd
@@ -63,7 +63,8 @@ fprintf('Firing rate range   : %.0f - %.0f spikes/s\n', min(out.IFR), max(out.IF
 %   out.bag.hs_force, out.chain.hs_force
 %   out.bag.bin_pops                     (cross-bridge distribution, bins x time)
 %   out.r_t, out.r, out.rs, out.rd       (receptor potential: total/static/dynamic)
-%   out.t_firing, out.IFR                (spike times and rate)
+%   out.t_firing, out.IFR                (spike times and rate; see
+%                                         examples/spikesFromReceptorPotential.m)
 
 %% 4. Plot it
 figure('Color', 'w', 'Name', 'My spindle simulation');
@@ -79,8 +80,9 @@ ylabel('activation (%)'); legend({'\alpha','chain','bag'}, 'Location','best'); g
 nexttile; plot(out.t, out.bag.hs_force, out.t, out.chain.hs_force, 'LineWidth', 1.5);
 ylabel('force (N m^{-2})'); legend({'bag','chain'}, 'Location','best'); grid on
 
-nexttile; stem(out.t_firing, out.IFR, 'filled', 'MarkerSize', 3);
-ylabel('Ia (spikes/s)'); xlabel('time (s)'); grid on
+nexttile; plot(out.t, out.rs, out.t, out.rd, out.t, out.r, 'LineWidth', 1.4);
+ylabel('r (a.u.)'); xlabel('time (s)');
+legend({'r_s (static)','r_d (dynamic)','r (total)'}, 'Location','best'); grid on
 title(tl, 'Muscle spindle model output');
 
 %% 5. Save the results (.mat with everything + .csv of the time series)

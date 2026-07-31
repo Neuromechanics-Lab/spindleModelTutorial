@@ -6,8 +6,9 @@ model on inputs *you* supply, in two directions.
 ## The two modes
 
 - **Forward** — you have the muscle **length** and the fiber **activations**, and
-  you want the model's **firing**:
-  `length + activations → forces → receptor potential → firing`.
+  you want the model's response:
+  `length + activations → forces → Ia receptor potential`.
+  (Spikes are a separate step - see `examples/spikesFromReceptorPotential.m`.)
 - **Optimize** — you have the muscle **length** and a recorded **Ia firing rate**,
   and you want the **gamma (fusimotor) drive** that reproduces it:
   `length + your firing → inferred gamma drive`.
@@ -39,7 +40,7 @@ activations default to silent.
 ### Minimal examples
 
 ```matlab
-% FORWARD: length + activations -> firing
+% FORWARD: length + activations -> receptor potential
 t          = 0:0.001:2;
 mtuLength  = 1250 + 100*max(0, min(1, (t-0.3)/0.8));   % a ramp-and-hold (nm)
 alphaAct   = 35 * ones(size(t));                       % 35% tonic alpha

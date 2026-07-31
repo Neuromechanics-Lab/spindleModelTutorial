@@ -494,7 +494,7 @@ classdef SpindleToolkitApp < SpindleAppBase
             % walkthrough step "From receptor potential to spikes" for why.
             for i = 1:4, a(i).Visible = 'on'; end
             a(5).Visible = 'off';
-            a(1).Parent.RowHeight = {'1x','1x','1x','1x',0};
+            a(1).Parent.Parent.RowHeight = {'1x','1x','1x','1x',0};   % panel -> grid
             obj.axLength(a(1), out);
             obj.axActivation(a(2), out);
             obj.axForce(a(3), out);
@@ -529,7 +529,7 @@ classdef SpindleToolkitApp < SpindleAppBase
             obj.clearUDAxes(a);
             for i = 1:3, a(i).Visible = 'on'; end
             a(4).Visible = 'off'; a(5).Visible = 'off';   % optimize uses 3 panels
-            a(1).Parent.RowHeight = {'1x','1x','1x', 0, 0}; % collapse the unused rows
+            a(1).Parent.Parent.RowHeight = {'1x','1x','1x', 0, 0};    % panel -> grid
 
             % Fit vs target firing
             axFit = a(1);

@@ -189,6 +189,10 @@ classdef SpindleAppBase < handle
         end
 
         function axFiring(obj, ax, out)
+            % NOT used by either window any more - the apps stop at the receptor
+            % potential (see docs/04_receptor_potential.md for why). Kept because
+            % it is the natural way to draw firing if you add a panel back, and
+            % it matches the plot in examples/spikesFromReceptorPotential.m.
             s = obj.S;
             if ~isempty(out.t_firing)
                 % Draw the rate as a STAIRCASE, not stems: a second of firing at
