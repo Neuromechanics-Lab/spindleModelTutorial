@@ -105,15 +105,15 @@ if tpaths.hasBspline
     % identified magnitude parameter (bag burst), which is robust to iter count.
     res = tutorialOptDemo(struct('tEnd', 1.4, 'maxIter', 25));
     nfail = nfail + check('optimizer cuts the cost by >60%', res.fvalOpt < 0.4 * res.fval0);
-    % recoveryPct is now the fraction of the INITIAL error closed, so 0 means a
-    % parameter never moved. The bag burst dominates the combined trace and
-    % recovers; the chain control points have ~12x less leverage on it and do
-    % NOT recover. That is a property of fitting one combined signal - which is
-    % all a real recording gives you - and the demo is expected to show it.
-    nfail = nfail + check('bag burst recovers from a single combined trace (>80%)', ...
+    % recoveryPct is the fraction of the INITIAL error closed; 0 means a
+    % parameter never moved. These are NOT evidence about identifiability - the
+    % demo fixes burst timing at the values used to build the target, so the fit
+    % gets information it would not have on real data. Checked only to confirm
+    % the machinery runs and reports finite numbers.
+    nfail = nfail + check('optimizer moves the bag burst toward truth', ...
         res.recoveryPct(1) > 80);
     cpClosed = res.recoveryPct(2:6);
-    nfail = nfail + check('chain waveform is weakly identified (documented, not a pass/fail bug)', ...
+    nfail = nfail + check('per-parameter recovery is reported for every parameter', ...
         all(isfinite(cpClosed)));
     fprintf('   closed%% : bag %.0f | chain cp %s\n', res.recoveryPct(1), ...
         mat2str(round(cpClosed)));

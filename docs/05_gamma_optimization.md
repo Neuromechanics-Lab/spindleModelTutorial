@@ -58,52 +58,27 @@ trace divided by its own mean, then RMSE — which is what the manuscript minimi
 (`objFuncWithFixedTiming_Bspline_5cp_normSmooth.m`). One combined trace, scored
 once, because that is all a real recording gives you.
 
-### What recovers, and what does not
+### A caveat before you read anything into the recovery numbers
 
-**The bag burst recovers; the gamma-static waveform does not.** The demo shows
-this rather than hiding it:
+The burst **timing** is fixed here, at the same values used to build the target —
+so the fit is handed the timing for free. That makes the demo's recovery figures
+unsuitable for drawing conclusions about which parameters are identifiable: the
+comparison between the bag and the γ-static waveform is confounded by the bag
+having been given something the chain was not.
 
-| parameter | % of initial error closed |
-|---|---|
-| bag burst magnitude | ~99%, reliably |
-| the five chain control points | **erratic** — sometimes several close 60–100%, sometimes none move, and individual points often move *away* |
-
-The chain result varies with the horizon, the solver and the run; do not read a
-single fit as definitive. See
-[07_differences_from_manuscript.md](07_differences_from_manuscript.md) for the
-full list of reasons, the largest being that the manuscript runs an outer 7×7 +
-5×5 grid over burst timing — 245 fits — where this demo runs one.
-
-Part of that is a property of the signal, not the optimizer. The total `r` is
-dominated by the bag: `rms(r_d)` is ~5× `rms(r_s)` in this protocol, and the cost
-landscape shows the same imbalance directly —
-
-| perturbation from truth | cost |
-|---|---|
-| bag ±0.2 pCa | 0.137 / 0.172 |
-| one control point ±0.2 pCa | 0.010 / 0.014 |
-| flatten **all five** control points | 0.066 |
-
-Discarding the entire gamma-static waveform costs less than a 0.2 pCa error in
-the bag. The chain parameters do move the cost monotonically, so they are not
-strictly unidentifiable — but with ~12× less leverage, a gradient search spends
-its budget on the bag and leaves them where they started. This is why the
-manuscript uses a derivative-free search (`patternsearch`) over many cycles of
-data, with an outer grid over timing.
-
-> An earlier version of this demo scored `r_s` and `r_d` **separately**, which
-> recovered all seven parameters to 95–100%. That was only possible because a
-> self-generated target can be decomposed into its static and dynamic parts — a
-> real recording is one signal and cannot be. It was giving the demo information
-> no experiment has, so it was removed.
+The manuscript does not fix timing. It searches it on a 7×7 coarse plus 5×5
+refine outer grid, running a full inner fit at every node — 245 fits — precisely
+because this is a hard optimization. The demo runs a single pass so it finishes
+interactively. Treat it as a walk-through of the workflow, not as evidence about
+identifiability.
 
 ### Notes on identifiability and speed
 
 - **Timing** (when gamma-dynamic turns on/off) is fixed here; it sits on a sharp
   transient and is hard to identify from a single trace — a real limitation the
   manuscript handles with the outer grid / multi-start.
-- **Phase** is the most weakly identified of the fitted parameters; a longer
-  simulation horizon (more gait cycles) constrains it better.
+- **Phase** moves little in a short run; a longer simulation horizon (more gait
+  cycles) gives it more to work with.
 - Each objective evaluation runs the full model, so a fit takes ~1–2 minutes.
   Ticking **Use parallel** spreads the finite-difference gradient across workers
   (needs the Parallel Computing Toolbox).

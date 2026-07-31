@@ -58,8 +58,10 @@ no phase transform and no smoothing. The Your-data tab offers a firing-rate mode
 5×5 refine, spanning 2–98% of the cycle, with a `patternsearch` fit of the 7
 inner parameters at *every node* (245 fits, run in parallel).
 **Tutorial:** timing is fixed at 10%/60% and only the inner 7 parameters are fit
-— **one** fit. This is the single biggest difference in optimization effort, and
-the main reason the tutorial's recovery is weaker and more erratic.
+— **one** fit. This is the single biggest difference in optimization effort. It
+also means the fit is handed the true burst timing, since the same fixed values
+build the target — so this demo cannot be used to ask which parameters are
+identifiable.
 
 ### 4b. The Your-data tab fits a different γ parameterization
 
@@ -122,29 +124,12 @@ dropdown.
 
 ## What this costs you
 
-The tutorial's gamma-optimization demo recovers the **bag burst magnitude**
-reliably (~99% of its initial error). The **γ-static control points recover
-erratically** — sometimes several close 60–100%, sometimes none move, and
-individual points often move *away* from truth. Contributing factors, roughly in
-order:
+The demo runs ONE fit with burst timing fixed, where the manuscript runs 245 with
+timing searched. Because that fixed timing is also the timing used to build the
+target, the fit starts with information it would not have on real data — so the
+per-parameter recovery numbers this demo reports are **not** evidence about which
+parameters are identifiable, and should not be read that way. They show the
+workflow running, nothing more.
 
-1. **No outer timing grid** (§4) — one fit instead of 245.
-2. **Weak leverage.** The bag dominates the combined trace: `rms(r_d)` ≈ 5×
-   `rms(r_s)`, and perturbing the bag by 0.2 pCa costs ~12× what perturbing one
-   control point by 0.2 does. Flattening the *entire* γ-static waveform costs
-   less than a 0.2 pCa bag error.
-3. **Neighbouring control points trade off against each other** — adjacent points
-   move in opposite directions, the signature of overlapping B-spline bases.
-
-This is not a chain-vs-bag degeneracy: making the chain stronger does *not*
-compensate for a wrong bag (a compensating perturbation costs slightly **more**
-than moving the bag alone). It is simply that the chain contributes little to the
-combined signal. When the bag is made weak (pCa 7.5) and the chain strong, the
-chain does become partly identifiable — so the imbalance is drive-dependent, not
-fundamental.
-
-An earlier version of this demo scored `r_s` and `r_d` **separately** and
-recovered all seven parameters to 95–100%. That is only possible with a simulated
-target, which can be decomposed into its static and dynamic parts; a real
-recording is one signal. It was removed for giving the demo information no
-experiment has.
+If you want to ask an identifiability question with this code, the timing has to
+be searched too, as the manuscript does.
