@@ -2,7 +2,7 @@ function results = buildLearnApp()
 % buildLearnApp  Compile the "Learn" window into a standalone desktop app.
 %
 %   Produces a double-clickable application (no MATLAB license needed to RUN it,
-%   only the free MATLAB Runtime) from spindleLearnApp.m. Run this once, on each
+%   only the free MATLAB Runtime) from launchLearnAppDeployed.m. Run this once, on each
 %   operating system you want to ship (the output is platform-specific: build on
 %   macOS -> Mac app, on Windows -> .exe).
 %
@@ -44,7 +44,7 @@ if ~isempty(absent)
         strjoin(unique(absent), ', '));
 end
 
-entry   = fullfile(root, 'spindleLearnApp.m');
+entry   = fullfile(root, 'launchLearnAppDeployed.m');
 dataMat = fullfile(root, 'data', 'ActCurveSim120240819.mat');
 figPng  = fullfile(root, 'data', 'spindleModelFig.png');
 % Output is platform-specific (a Mac .app vs a Windows .exe), so keep each
@@ -86,5 +86,5 @@ fprintf('  standalone app : %s\n', fullfile(outDir, appName));
 fprintf('  installer      : %s\n', fullfile(outDir, 'installer'));
 
 % ---- Equivalent one-liner using the older mcc interface -----------------
-% mcc -m spindleLearnApp.m -a data/ActCurveSim120240819.mat -d build/SpindleTutorialLearn
+% mcc -m launchLearnAppDeployed.m -a data/ActCurveSim120240819.mat -d build/SpindleTutorialLearn
 end

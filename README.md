@@ -217,7 +217,7 @@ spindleModelTutorial/
 ├── launchSpindleTutorial.m   launcher menu (choose Learn or Apply)
 ├── launchSpindleTutorialApp.m  open the Tutorial (Learn) window directly
 ├── launchSpindleToolkit.m    open the Analysis Toolkit (Apply) window directly
-├── spindleLearnApp.m         entry point for the compiled standalone Learn app
+├── launchLearnAppDeployed.m  entry point for the COMPILED standalone Learn app
 ├── build/
 │   └── buildLearnApp.m       compile the Learn window (MATLAB Compiler)
 ├── setupTutorialPaths.m      adds the toolbox + local folders to the path

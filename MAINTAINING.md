@@ -63,7 +63,7 @@ cd build
 buildLearnApp        % -> build/SpindleTutorialLearn_mac/  (or _win on Windows)
 ```
 
-`spindleLearnApp.m` is the entry point (opens the Learn window and keeps it
+`launchLearnAppDeployed.m` is the entry point (opens the Learn window and keeps it
 alive); the activation-curve `.mat`, the overview figure, and the model functions
 are bundled automatically. The script also packages an **installer** that fetches
 the free Runtime at install time.
