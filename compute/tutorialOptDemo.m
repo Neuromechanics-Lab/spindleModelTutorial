@@ -249,6 +249,13 @@ end
 
 
 % ======================================================================
+function tf = hasParallelToolbox()
+% patternsearch/fmincon only honour UseParallel with the Parallel Computing
+% Toolbox; asking for it without one warns on every objective evaluation.
+tf = ~isempty(ver('parallel')) && license('test', 'Distrib_Computing_Toolbox');
+end
+
+
 function v = getOpt(opts, field, default)
 if isfield(opts, field) && ~isempty(opts.(field)), v = opts.(field); else, v = default; end
 end

@@ -131,7 +131,26 @@ classdef SpindleAppBase < handle
             if nargin < 4, col = 1; end
             p = uipanel(gridParent, 'BorderType', 'none', 'BackgroundColor', obj.S.card);
             p.Layout.Row = row; p.Layout.Column = col;
+            % Normalized units + the panel's own AutoResizeChildren handle window
+            % resizes. What they do NOT handle is a panel that changes size
+            % because a render un-hid it or changed its row height - the axes
+            % keeps its old size and the plot fills a fraction of the panel. Each
+            % render therefore calls refitAxes() afterwards.
+            % (A SizeChangedFcn here would be dead code: MATLAB disables it while
+            % AutoResizeChildren is 'on', and warns once per panel.)
             ax = uiaxes(p, 'Units', 'normalized', 'Position', [0 0 1 1]);
+        end
+
+        function refitAxes(~, axList)
+            % Re-fit every axes to its panel. Call after a render that changed
+            % which panels are visible or how tall their rows are: the panel
+            % resizes, but the axes inside does not always follow on its own.
+            drawnow;
+            for k = 1:numel(axList)
+                if isvalid(axList(k))
+                    SpindleAppBase.fillPanel(axList(k).Parent, axList(k));
+                end
+            end
         end
 
         function ax = axInGrid(obj, grid, row)
@@ -220,6 +239,23 @@ classdef SpindleAppBase < handle
     end
 
     methods (Static)
+        function fillPanel(pnl, ax)
+            % Make ax exactly fill pnl, in pixels. For uiaxes, Position INCLUDES
+            % the labels and margins, so [0 0 w h] fills without clipping them.
+            if ~isvalid(pnl) || ~isvalid(ax), return; end
+            % Re-assert the fill. Normalized units track the panel on most resize
+            % paths but not all - maximising the window left the axes at their old
+            % size - so this runs again from SizeChangedFcn. Do NOT compute a
+            % pixel size here: both pnl.Position and getpixelposition report
+            % mid-layout values inside this callback.
+            % Toggling the units forces MATLAB to recompute the layout. Simply
+            % re-assigning the same normalized Position is a no-op, which is why
+            % an axes whose panel had just been un-hidden stayed at its old size.
+            ax.Units = 'pixels';
+            ax.Units = 'normalized';
+            ax.Position = [0 0 1 1];
+        end
+
         function s = sty()
             % Shared palette + typography. Softened, slightly desaturated colors
             % on warm off-white canvases with white cards. bag = warm terracotta,
