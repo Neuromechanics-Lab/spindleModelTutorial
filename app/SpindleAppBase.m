@@ -176,8 +176,17 @@ classdef SpindleAppBase < handle
         function axFiring(obj, ax, out)
             s = obj.S;
             if ~isempty(out.t_firing)
-                stem(ax, out.t_firing, out.IFR, 'filled', 'Color', s.green, ...
-                    'MarkerSize', 3.5, 'MarkerFaceColor', s.green, 'LineWidth', 1.2);
+                % Draw the rate as a STAIRCASE, not stems: a second of firing at
+                % 200 spikes/s is 200 stems, which merge into a solid block and
+                % hide the very shape the panel exists to show. Stairs is also the
+                % honest picture - 1/ISI is constant between spikes, and the rate
+                % really is quantised to 1/(k*dt).
+                stairs(ax, out.t_firing, out.IFR, 'Color', s.green, 'LineWidth', s.lw);
+                if numel(out.t_firing) <= 80
+                    hold(ax, 'on');
+                    plot(ax, out.t_firing, out.IFR, '.', 'Color', s.green, 'MarkerSize', 9);
+                    hold(ax, 'off');
+                end
             end
             ylabel(ax, 'Ia firing (spikes/s)'); title(ax, 'Predicted Ia firing');
             xlim(ax, [out.t(1) out.t(end)]);

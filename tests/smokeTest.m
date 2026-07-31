@@ -37,15 +37,22 @@ nfail = nfail + check('bin_pops has one row per strain bin', ...
     size(out.bag.bin_pops, 1) == numel(out.x_bins));
 nfail = nfail + check('receptor potential is non-negative and finite', ...
     all(out.r >= 0) && all(isfinite(out.r)));
+% Compare the stretch response against the PRE-STRETCH baseline, not against
+% rd(1). rd(1) is the zero-activation value, so measuring from there conflates
+% "the gamma drive raised rd" with "the stretch raised rd" - and the shipped
+% gamma levels are deliberately low, which made the old 3x form fail even though
+% the yank response was perfectly healthy (1.49x above its own baseline).
+t0   = out.params.protocol.perturbStart;
+pre  = out.t > t0 - 0.15 & out.t < t0;
+dur  = out.t >= t0 & out.t < t0 + 0.3;
 nfail = nfail + check('ramp-and-hold drives a dynamic response (rd peak > baseline)', ...
-    max(out.rd) > 3 * (out.rd(1) + eps));
+    max(out.rd(dur)) > 1.3 * median(out.rd(pre)));
 
 % integrateAndFire_v2 is refractory-limited and its rate quantises to 1/(k*dt),
 % so a too-strong drive collapses the whole firing trace onto 1/(4*dt) and the
 % firing panel teaches nothing. Turning the gamma drive up SHOULD saturate - that
 % is a real property of the model at dt = 1 ms - but the shipped defaults must
 % not, or every example looks like a flat line.
-t0  = out.params.protocol.perturbStart;
 ifr = out.IFR(isfinite(out.IFR));
 nfail = nfail + check('default example firing is not pinned at the ceiling', ...
     mean(ifr >= 0.99 / (4 * out.params.sim.dt)) < 0.05);

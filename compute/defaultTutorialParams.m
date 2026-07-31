@@ -58,16 +58,19 @@ p.gamma.chainOn        = 0.15;        % s, chain (gamma-static) onset. NOT 0: th
                                       % integrateAndFire_v2 takes r(1) as the resting
                                       % offset (the toolbox holds activation at zero
                                       % for the first 10 steps for the same reason)
-p.gamma.chainLevel_pct = 30;          % % activation: level, or MEAN of the sine
+p.gamma.chainLevel_pct = 20;          % % activation: level, or MEAN of the sine
 p.gamma.chainAmp_pct   = 20;          % % activation, sine amplitude
 p.gamma.chain_freq     = 1.0;         % Hz, sine frequency
 p.gamma.chainPhase_s   = 0.0;         % s, sine phase relative to chainOn
-% Deliberately low. integrateAndFire_v2 is refractory-limited to 1/(3*dt) and its
-% rate quantises to 1/(k*dt), so above ~150 spikes/s the steps are 200 -> 250 and
-% all detail is lost. The bag drives r hard, so anything above ~5% pins the whole
-% trace at the ceiling. Turn it up in the Playground to see that happen - it is a
-% real property of the model at dt = 1 ms, not a bug.
-p.gamma.bagBurst_pct   = 4;           % % activation during the gamma-dynamic burst
+% Deliberately low. Firing is refractory-limited to 1/(4*dt) = 250 spikes/s and
+% quantises to 1/(k*dt), so above ~150 the only rungs left are 167, 200, 250 and
+% the response flattens into a block. kFb is the largest transduction gain and the
+% bag fiber is strong, so even a few percent of bag drive moves r a long way -
+% above ~4% the whole trace pins at the ceiling. These levels keep the run on the
+% finely spaced rungs (~60-150), where changing a slider produces a visible,
+% proportionate response. Turn them up in the Playground to see it saturate: that
+% is a real property of the model at dt = 1 ms, not a bug.
+p.gamma.bagBurst_pct   = 2;           % % activation during the gamma-dynamic burst
 p.gamma.bagOn          = 0.15;        % s, burst onset (see chainOn)
 p.gamma.bagOff         = 1.8;         % s, burst offset
 
