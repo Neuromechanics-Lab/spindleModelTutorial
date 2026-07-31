@@ -183,7 +183,7 @@ classdef SpindleLearnApp < SpindleAppBase
             row = obj.addSliderRow(sc, row, 'gamma_chain_freq', 'Chain sine frequency (Hz) [sine]', 0.25, 3, 1.0);
             row = obj.addSliderRow(sc, row, 'gamma_chainPhase_s', 'Chain sine phase (s after onset) [sine]', -1, 1, 0.0);
             row = obj.addSliderRow(sc, row, 'gamma_bagBurst_pct', 'Bag / \gamma-dynamic burst activation (%)', 0, 100, 90);
-            row = obj.addSliderRow(sc, row, 'gamma_bagOn', 'Bag burst onset (s)', 0.1, 1.5, 0.3);
+            row = obj.addSliderRow(sc, row, 'gamma_bagOn', 'Bag burst onset (s)', 0.0, 1.5, 0.3);
             row = obj.addSliderRow(sc, row, 'gamma_bagOff', 'Bag burst offset (s)', 0.4, 2.5, 1.1);
 
             % Fiber kinetics

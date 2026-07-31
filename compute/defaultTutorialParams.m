@@ -58,7 +58,7 @@ p.mtu.alphaPhase     = 0;       % rad (sine mode)
 % Levels are in % ACTIVATION (0-100) - the same units the app plots - and are
 % converted to the model's pCa internally by makeGammaDrive.
 p.gamma.chainMode      = 'constant';  % 'constant' | 'sine'
-p.gamma.chainOn        = 0.15;        % s, chain (gamma-static) onset. NOT 0: the
+p.gamma.chainOn        = 0.05;        % s, chain (gamma-static) onset. NOT 0: the
                                       % run must START at zero activation, because
                                       % integrateAndFire_v2 takes r(1) as the resting
                                       % offset (the toolbox holds activation at zero
@@ -76,7 +76,7 @@ p.gamma.chainPhase_s   = 0.0;         % s, sine phase relative to chainOn
 % proportionate response. Turn them up in the Playground to see it saturate: that
 % is a real property of the model at dt = 1 ms, not a bug.
 p.gamma.bagBurst_pct   = 2;           % % activation during the gamma-dynamic burst
-p.gamma.bagOn          = 0.15;        % s, burst onset (see chainOn)
+p.gamma.bagOn          = 0.05;        % s, burst onset (see chainOn)
 p.gamma.bagOff         = 1.8;         % s, burst offset
 
 % -- Bag fiber kinetics (override; [] = toolbox default) ----------------

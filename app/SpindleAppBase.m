@@ -196,12 +196,17 @@ classdef SpindleAppBase < handle
                 % hide the very shape the panel exists to show. Stairs is also the
                 % honest picture - 1/ISI is constant between spikes, and the rate
                 % really is quantised to 1/(k*dt).
-                stairs(ax, out.t_firing, out.IFR, 'Color', s.green, 'LineWidth', s.lw);
-                if numel(out.t_firing) <= 80
-                    hold(ax, 'on');
-                    plot(ax, out.t_firing, out.IFR, '.', 'Color', s.green, 'MarkerSize', 9);
-                    hold(ax, 'off');
-                end
+                % Staircase for the shape (1/ISI really is constant between
+                % spikes and quantised to 1/(k*dt)), plus a marker per spike so
+                % you can see the individual spikes. Stems were the original
+                % look, but at 200 spikes/s they merge into a solid block.
+                stairs(ax, out.t_firing, out.IFR, 'Color', s.green, ...
+                    'LineWidth', s.lwThin);
+                hold(ax, 'on');
+                msz = 5; if numel(out.t_firing) > 300, msz = 3; end
+                plot(ax, out.t_firing, out.IFR, 'o', 'LineStyle', 'none', ...
+                    'Color', s.green, 'MarkerFaceColor', s.green, 'MarkerSize', msz);
+                hold(ax, 'off');
             end
             ylabel(ax, 'Ia firing (spikes/s)'); title(ax, 'Predicted Ia firing');
             xlim(ax, [out.t(1) out.t(end)]);
