@@ -30,17 +30,26 @@ is why the two platforms list different versions.
 
 - **Overview** — what the model is and how the pipeline fits together.
 - **Guided walkthrough** — a narrated, five-step tour: inputs (length +
-  activation) → cross-bridge distribution → receptor potential + yank →
-  predicted Ia firing → the whole pipeline.
+  activation) → cross-bridge distribution → receptor potential + yank → from
+  receptor potential to spikes → the whole pipeline.
 - **Playground** — move any parameter (stretch protocol, extrafusal α + tendon,
   γ drive, fiber kinetics, transduction gains) and watch every signal update,
   with a scrubber to step the cross-bridge distribution through time.
 
+The model's output here is the Ia **receptor potential**. Turning it into spikes
+is a separate step, left to `examples/spikesFromReceptorPotential.m` — the
+integrate-and-fire the toolbox ships is refractory-limited to 250 spikes/s at
+`dt = 1 ms`, which any realistic γ drive saturates, so plotting it would show
+the time step rather than the spindle. See
+[docs/04](https://github.com/SurabhiSimha/spindleModelTutorial/blob/main/docs/04_receptor_potential.md).
+
 ## For MATLAB users
 
 If you have MATLAB you don't need the installers above — run it from source and
-you also get the **Analysis Toolkit** (model fitting), which the standalone app
-does not include. Either clone the repository:
+you also get the **Analysis Toolkit**: recover γ drive from a simulated Ia, or
+fit the model to **your own** recordings. The standalone app does not include it.
+
+Either clone the repository:
 
 ```bash
 git clone https://github.com/SurabhiSimha/spindleModelTutorial.git
@@ -56,8 +65,13 @@ launchSpindleTutorial     % pick Interactive Tutorial (Learn) or Analysis Toolki
 
 **Nothing else to install** — the muscle spindle model code is included under
 `vendor/`. You need MATLAB R2020a or later with the **Signal Processing** and
-**Optimization** Toolboxes. Details in the
-[README](https://github.com/SurabhiSimha/spindleModelTutorial#readme).
+**Optimization** Toolboxes; the Analysis Toolkit also uses **Global
+Optimization** (for `patternsearch`) and benefits from **Parallel Computing**.
+
+Full details in the
+[README](https://github.com/SurabhiSimha/spindleModelTutorial#readme). How this
+tutorial's workflow differs from the published pipeline is listed in
+[docs/07](https://github.com/SurabhiSimha/spindleModelTutorial/blob/main/docs/07_differences_from_manuscript.md).
 
 ## Citation
 
