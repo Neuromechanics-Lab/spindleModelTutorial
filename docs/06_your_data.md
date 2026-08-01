@@ -146,15 +146,46 @@ it, in the app's **Cycle period (s)** box or `opts.cyclePeriod`.
 
 `opts.solver` (and the app's **Solver** dropdown) chooses between:
 
-- **`'fmincon'`** (default) — faster, and it converges better on this compact
-  four-parameter fit. On the built-in example: cost 0.395 → 0.101.
+- **`'fmincon'`** (default). On the built-in example, 20 iterations: cost
+  0.333 → 0.064 in ~124 s.
 - **`'patternsearch'`** — what the manuscript uses. Derivative-free, so it copes
   better with the stepped cost you get in `'firing'` mode, and worth trying if a
-  fit looks like it stalled. Slower per iteration (it polls 2N points), so it
-  needs a larger `maxIter`: at 12 it undershoots (cost 0.395 → 0.243) in a third
-  of the time.
+  fit looks like it stalled. Same budget: 0.333 → 0.071 in ~136 s.
+
+The two are close here; neither dominates. Try both if a fit matters.
 
 > The built-in example's `targetFiring` is generated as a rectified-linear function
 > of `r` (`rate = a*(r - threshold)`), not by running the toolbox spike generator —
 > which would clip 65–90% of the trace at 250 spikes/s and make the example
 > unrepresentative of a real recording. See `compute/exampleUserData.m`.
+
+
+## The built-in example
+
+`exampleUserData()` generates a known model run so both actions work without a
+file. Its true drive is:
+
+| | |
+|---|---|
+| γ-static (chain) | a smooth rise and fall sweeping **10–60%** activation |
+| γ-dynamic (bag) | a **10%** burst from 0.35 to 1.15 s |
+| α (extrafusal) | constant 35% |
+
+Two deliberate choices. γ-static **varies in time**, so the B-spline modes have a
+shape to recover — with a constant truth every γ-static mode scores the same and
+the spline looks pointless. And the bag is kept **low**: it drives `r` far harder
+than the chain does, and at a high bag level `rms(r_d)` is several times
+`rms(r_s)`, so the chain's contribution is swamped. At 10% the ratio is ~2.2, and
+both components are visible in the trace.
+
+With 20 iterations, fitting the receptor potential:
+
+| γ-static model | parameters | cost |
+|---|---|---|
+| `bspline-periodic` (cycle 1.67 s) | 8 | **0.057** |
+| `bspline-free` | 8 | **0.064** |
+| `constant` | 4 | 0.082 |
+
+Both splines beat the single-level fit, which is the example doing its job. Note
+`targetFiring` here is rectified-linear in `r` rather than the toolbox spike
+generator's output — see the comment in `compute/exampleUserData.m` for why.

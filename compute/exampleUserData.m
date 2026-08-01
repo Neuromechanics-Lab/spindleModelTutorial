@@ -9,8 +9,25 @@ function d = exampleUserData()
 %   It also shows exactly what fields a user's own .mat should contain.
 
 p = defaultTutorialParams(); p.sim.tEnd = 1.8;
-% (% activation; ~pCa 6.2 and 5.8 on the chain/bag curves respectively)
-p.gamma.chainLevel_pct = 34; p.gamma.bagBurst_pct = 92;
+
+% gamma-STATIC is deliberately TIME-VARYING - a smooth rise and fall sweeping
+% 10-60% activation. The optimizer's default model is a 5-control-point
+% B-spline, so a constant truth (which this example used to have) gives it
+% nothing to recover: every gamma-static mode scores the same and the B-spline
+% looks pointless. A smooth waveform is representable by the spline and is what
+% a real fusimotor drive would look like.
+p.gamma.chainMode      = 'sine';
+p.gamma.chainLevel_pct = 35;    % mean
+p.gamma.chainAmp_pct   = 25;    % so it sweeps 10-60%
+p.gamma.chain_freq     = 0.6;   % Hz - about one rise-and-fall over the trial
+p.gamma.chainPhase_s   = 0;
+
+% gamma-DYNAMIC kept low on purpose. The bag drives r far harder than the chain
+% does, and at the 92% this example used to run, rms(r_d) was 5.5x rms(r_s) -
+% the chain's contribution was swamped, so there was little for a fit to work
+% with. At 10% the ratio is 2.2x: the bag still leads, as it should, but both
+% components are visible in the trace.
+p.gamma.bagBurst_pct   = 10;
 p.gamma.bagOn = 0.35; p.gamma.bagOff = 1.15;
 ref = tutorialForwardSim(p);
 
