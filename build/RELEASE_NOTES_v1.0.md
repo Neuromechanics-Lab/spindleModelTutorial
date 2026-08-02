@@ -85,4 +85,6 @@ tutorial's workflow differs from the published pipeline is listed in
   properties emerge from multiscale muscle mechanics. *eLife* 9:e55177.
   doi:10.7554/eLife.55177
 
-MIT licensed.
+Licensed under the GNU Affero General Public License v3 or later (AGPL-3.0-or-later).
+Clone, run and modify freely; the copyleft applies if you redistribute a modified
+version or serve one over a network.

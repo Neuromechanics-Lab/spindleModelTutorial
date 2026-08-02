@@ -168,5 +168,18 @@ convention throughout is the model's own: **lower pCa = stronger activation**
 
 ## License
 
-MIT — see [LICENSE](LICENSE). If you use this in published work, please cite the
-model papers above.
+Copyright © 2026 Surabhi N. Simha.
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the **GNU Affero General Public License** as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version. See [LICENSE](LICENSE) for the full text.
+
+In practice: you may **clone, run, and modify it freely** — running and private
+modification carry no obligations at all. The copyleft applies if you
+*redistribute* a modified version, or expose one to users over a network, in
+which case you must make your source available under the same terms.
+
+If you use this in published work, please cite the software (see
+[CITATION.cff](CITATION.cff) or GitHub's *Cite this repository*) and the model
+papers above.
