@@ -15,11 +15,11 @@ where **yank** is the time-derivative of bag force, `dF/dt`.
 ## Why two components
 
 - **`r_s` — static / length signal.** The chain fiber's force tracks how much
-  the fiber is stretched, so `r_s` encodes **length**. Gain `kFc`.
+  the fiber is stretched, so `r_s` encodes **length** under passive conditions. Gain `kFc`.
 - **`r_d` — dynamic / velocity signal.** The bag fiber contributes both its
   force (`kFb`) and, crucially, its **yank** (`kYb`). Because yank is largest
-  while the fiber is *moving*, `r_d` produces the sharp burst at movement onset
-  that makes real Ia afferents so velocity-sensitive.
+  while the fiber begins or changes *movement*, `r_d` produces the sharp burst at movement onset
+  that gives the initial burst in real Ia afferents, and the slower net kinetics of the bag make it velocity-sensitive.
 
 Forces and yank are half-wave rectified (negative values set to zero), lightly
 low-pass filtered, and scaled, before being summed. A **receptor threshold** can
@@ -33,7 +33,7 @@ then be subtracted from `r` (`r = r - threshold`, negatives clipped to zero).
 
 ## Occlusion (optional)
 
-Real Ia endings branch onto both fibers, and the branches can **compete** rather
+Ia endings receive branches from both bag and chain fibers, and the branches can **compete** rather
 than simply add. With **occlusion** on, whichever component (static or dynamic)
 is momentarily smaller is attenuated (to 30%, chosen to match Banks et al.,
 1997), rather than the two summing linearly. Toggle it in the Playground to see
