@@ -41,8 +41,7 @@ mismatch.
 **Manuscript:** *measured* MTU length and EMG-derived α activation from the
 walking data.
 **Tutorial:** an idealized sinusoid (8% amplitude, α modulated at the same
-frequency). Real gait length profiles are not sinusoidal, and the yank content —
-which the bag fiber responds to — differs.
+frequency).
 
 ### 3. What is compared
 **Manuscript:** the model's **firing rate**, transformed to gait-cycle phase,
@@ -54,8 +53,7 @@ no phase transform and no smoothing. The Your-data tab offers a firing-rate mode
 (`fitTarget = 'firing'`) but still on the time grid.
 
 The mean-normalized cost makes `r` and firing rate interchangeable *in principle*
-— below the ceiling they are proportional, and normalization cancels the factor —
-but they are **not** interchangeable in practice, and the manuscript never made
+— below the ceiling they are proportional, and normalization cancels the factor — and the manuscript never made
 this substitution (its objective always runs `integrateAndFire_v2`). On the
 built-in example, whose truth is known, fitting `r` recovers the bag burst
 (pCa 7.54, 0.36–1.21 s vs a truth of 7.68, 0.35–1.15 s) at cost 0.064, while
