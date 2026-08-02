@@ -22,9 +22,9 @@ fields). Every time-series must be the **same length as `t`**.
 |----------|---------|-------|-----------|
 | `t` | time, ~1 ms uniform step | s | always |
 | `mtuLength` *or* `fascicleLength` | muscle length | nm | always |
-| `alphaAct` | extrafusal (α-motor) activation | `0..1` or `0..100` % | optional |
-| `chainAct` | γ-static (chain) activation | `0..1` or `0..100` % | forward |
-| `bagAct` | γ-dynamic (bag) activation | `0..1` or `0..100` % | forward |
+| `alphaAct` | extrafusal (α) activation (default 0 — passive muscle) | `0..1` or `0..100` % | optional |
+| `chainAct` | chain (γ-static) activation (default 0 — silent) | `0..1` or `0..100` % | forward |
+| `bagAct` | bag (γ-dynamic) activation (default 0 — silent) | `0..1` or `0..100` % | forward |
 | `targetFiring` | recorded Ia firing rate | spikes/s | optimize |
 | `tendonStiffness` | tendon stiffness (scalar, default 5000) | — | optional |
 
@@ -45,7 +45,7 @@ t          = 0:0.001:2;
 mtuLength  = 1250 + 100*max(0, min(1, (t-0.3)/0.8));   % a ramp-and-hold (nm)
 alphaAct   = 35 * ones(size(t));                       % 35% tonic alpha
 chainAct   = 50 * ones(size(t));                       % 50% gamma-static
-bagAct     = 90 * (t>0.3 & t<1.1);                     % gamma-dynamic burst
+bagAct     = 10 * (t>0.3 & t<1.1);                     % gamma-dynamic burst
 save('myForward.mat', 't','mtuLength','alphaAct','chainAct','bagAct');
 
 % OPTIMIZE: length + recorded firing -> gamma
@@ -179,8 +179,8 @@ file. Its true drive is:
 
 | | |
 |---|---|
-| γ-static (chain) | a smooth rise and fall sweeping **10–60%** activation |
-| γ-dynamic (bag) | a **10%** burst from 0.35 to 1.15 s |
+| chain (γ-static) | a smooth rise and fall sweeping **10–60%** activation |
+| bag (γ-dynamic) | a **10%** burst from 0.35 to 1.15 s |
 | α (extrafusal) | constant 35% |
 
 Two deliberate choices. γ-static **varies in time**, so the B-spline modes have a

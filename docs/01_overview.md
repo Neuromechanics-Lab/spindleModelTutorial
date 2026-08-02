@@ -73,5 +73,5 @@ potential.
 - **`04_receptor_potential.md`** — force and yank → the Ia receptor potential.
 - **`05_gamma_optimization.md`** — inferring fusimotor drive by optimization.
 
-Or just launch the app (`launchSpindleTutorial`) and start with the **Guided
+Or just launch the app (`launchSpindleGUI`) and start with the **Guided
 walkthrough** tab.

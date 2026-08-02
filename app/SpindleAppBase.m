@@ -211,7 +211,9 @@ classdef SpindleAppBase < handle
             plot(ax, out.t, 100*out.actC, 'Color', s.chain, 'LineWidth', s.lw);
             plot(ax, out.t, 100*out.actB, 'Color', s.bag, 'LineWidth', s.lw); hold(ax, 'off');
             ylabel(ax, 'activation (%)'); title(ax, 'Activation');
-            legend(ax, {'\alpha (extrafusal)','chain (\gamma-static)','bag (\gamma-dynamic)'}, ...
+            % Naming convention throughout the apps and docs: the anatomical name
+            % first, the Greek drive it carries in brackets.
+            legend(ax, {'extrafusal (\alpha)','chain (\gamma-static)','bag (\gamma-dynamic)'}, ...
                 'Location', 'best');
             obj.padY(ax, 100*[out.actAlpha(:); out.actC(:); out.actB(:)]); xlim(ax, [out.t(1) out.t(end)]);
             obj.tagAxes(ax, 'input');

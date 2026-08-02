@@ -104,7 +104,7 @@ the toolkit, and the tests all run unchanged on macOS and Windows — only the
 
 | Audience | What they need | How to distribute |
 |----------|----------------|-------------------|
-| **Has MATLAB** | The source | Link to the **git repo**; they clone it and run `launchSpindleTutorial`. |
+| **Has MATLAB** | The source | Link to the **git repo**; they clone it and run `launchSpindleGUI`. |
 | **No MATLAB** | The compiled app | They **download one installer** (per OS) + the free Runtime — no git clone, no MATLAB. |
 
 Prebuilt installers for **macOS** and **Windows** are attached to the

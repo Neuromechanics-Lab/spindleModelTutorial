@@ -32,7 +32,7 @@ mtuLength     = 30 + 2.4 * max(0, min(1, (t - 0.3) / 0.8));   % mm, a ramp-and-h
 % Motor drive, as % of maximum activation (0-100).
 alphaAct = 35 * ones(size(t));                   % alpha, to the extrafusal muscle
 chainAct = 50 * ones(size(t));                   % gamma-static, to the chain fiber
-bagAct   = 90 * (t > 0.3 & t < 1.1);             % gamma-dynamic burst, to the bag fiber
+bagAct   = 10 * (t > 0.3 & t < 1.1);             % gamma-dynamic burst, to the bag fiber
 
 % If you are FITTING instead, supply your recorded Ia rate and leave the gamma
 % activations out:
@@ -75,7 +75,9 @@ ylabel('fascicle (nm)'); title('Length'); grid on
 
 nexttile; plot(out.t, 100*out.actAlpha, out.t, 100*out.actC, out.t, 100*out.actB, ...
     'LineWidth', 1.5);
-ylabel('activation (%)'); legend({'\alpha','chain','bag'}, 'Location','best'); grid on
+ylabel('activation (%)');
+legend({'extrafusal (\alpha)','chain (\gamma-static)','bag (\gamma-dynamic)'}, ...
+    'Location','best'); grid on
 
 nexttile; plot(out.t, out.bag.hs_force, out.t, out.chain.hs_force, 'LineWidth', 1.5);
 ylabel('force (N m^{-2})'); legend({'bag','chain'}, 'Location','best'); grid on

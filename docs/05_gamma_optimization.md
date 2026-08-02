@@ -18,10 +18,13 @@ optimization.
    adjust parameters  ◄──────────────┘   (repeat until the fit is good)
 ```
 
-An optimizer (`fmincon`, in the manuscript wrapped in a pattern-search + `fmincon`
-**hybrid grid** to escape local minima) minimizes the mismatch between the
-model's Ia and the target. In the real project the target is experimental Ia data
-(Taylor et al.).
+An optimizer minimizes the mismatch between the model's Ia and the target. The
+manuscript uses **`patternsearch` throughout**: a two-stage grid over the burst
+timing — a 7×7 coarse pass, then a 5×5 refine — with a full `patternsearch` fit
+of the remaining parameters at every node. The "hybrid" in
+`hybridOptimizationGammaDrive_Bspline_5cp_grid` refers to that grid-plus-search
+structure, not to mixing solvers: `fmincon` is not part of it. In the real
+project the target is experimental Ia data (Taylor et al.).
 
 ## What the tutorial actually runs
 

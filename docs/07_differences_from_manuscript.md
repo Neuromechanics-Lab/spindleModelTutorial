@@ -110,20 +110,18 @@ comparable; the settling before it is not.
 
 ## What it costs in run time
 
-The Learn window is unaffected — a playground re-run is ~1.6 s, and moving a
-gamma slider ~1.3 s. The two fits in the Analysis Toolkit are slower than they
-were, because `patternsearch` polls 2N points per iteration and the budget rose
-from 12 to 25 iterations to compensate:
+The Learn window is interactive — a playground re-run is ~1.6 s, and moving a
+gamma slider ~1.3 s. The two fits in the Analysis Toolkit take minutes:
 
-| | before | now |
+| Fit | Time | Configuration |
 |---|---|---|
-| Gamma optimization | 78 s (fmincon, 12 iter, serial) | **88 s** (patternsearch, 25, **parallel** — on by default) |
-| — same, serial | | 228 s |
-| Your data, optimize | 64 s (firing, fmincon, 4 parameters) | **~125 s** (receptor, fmincon, 8 parameters — the new default) |
+| Gamma optimization | **88 s** | patternsearch, 25 iterations, parallel (on by default) |
+| — same, serial | 228 s | without the Parallel Computing Toolbox |
+| Your data, optimize | **~125 s** | fmincon, 8 parameters, fitting the receptor potential |
 
 Parallel is worth 2.6× on the gamma fit, because patternsearch's 2N poll points
 are independent; the first run pays a one-off ~45 s pool startup. Both fits are
-still far below the manuscript's own budget (200 iterations / 400 evaluations per
+far below the manuscript's own budget (200 iterations / 400 evaluations per
 node, at 245 nodes).
 
 The two tabs default to *different* solvers. The gamma demo uses patternsearch

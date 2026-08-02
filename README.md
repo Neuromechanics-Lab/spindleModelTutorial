@@ -17,14 +17,14 @@ the cross-bridge distribution respond — then fit the model to your own data.
 Clone the repo and, from MATLAB in this folder:
 
 ```matlab
-launchSpindleTutorial       % launcher: choose Tutorial (Learn) or Toolkit (Apply)
+launchSpindleGUI            % launcher: choose Tutorial (Learn) or Toolkit (Apply)
 ```
 
 Or open a window directly, skipping the menu:
 
 ```matlab
-launchSpindleTutorialApp    % Interactive Tutorial (Overview, Walkthrough, Playground)
-launchSpindleToolkit        % Analysis Toolkit (Gamma optimization, Your data)
+launchSpindleTutorialGUI    % Interactive Tutorial (Overview, Walkthrough, Playground)
+launchSpindleToolkitGUI     % Analysis Toolkit (Gamma optimization, Your data)
 ```
 
 Start on the **Overview** tab, work through the **Guided walkthrough**, then
@@ -78,8 +78,8 @@ struct named `data` with these fields) — all time-series the same length as `t
 | `t` | time (s), uniform step — **use ~1 ms** | always |
 | `mtuLength` *or* `fascicleLength` | muscle length, **any units** | always |
 | `restingLength` | resting length, **same units** as your length trace | recommended |
-| `alphaAct` | extrafusal (α) activation, `0..1` or `0..100` % | optional |
-| `chainAct`, `bagAct` | γ-static / γ-dynamic activations | **forward** run |
+| `alphaAct` | extrafusal (α) activation, `0..1` or `0..100` % — default 0 (passive muscle) | optional |
+| `chainAct`, `bagAct` | chain (γ-static) / bag (γ-dynamic) activations — default 0 (silent) | **forward** run |
 | `targetFiring` | recorded Ia firing rate (spikes/s) | **optimize** run |
 | `tendonStiffness` | scalar (default 5000) | optional |
 
@@ -123,9 +123,9 @@ somewhere else. Re-syncing is a maintainer task — see
 
 ```
 spindleModelTutorial/
-├── launchSpindleTutorial.m     launcher menu (choose Learn or Apply)
-├── launchSpindleTutorialApp.m  open the Tutorial (Learn) window directly
-├── launchSpindleToolkit.m      open the Analysis Toolkit (Apply) window directly
+├── launchSpindleGUI.m          launcher menu (choose Learn or Apply) — start here
+├── launchSpindleTutorialGUI.m  open the Tutorial (Learn) window directly
+├── launchSpindleToolkitGUI.m   open the Analysis Toolkit (Apply) window directly
 ├── launchLearnAppDeployed.m    entry point for the COMPILED standalone Learn app
 ├── setupTutorialPaths.m        adds the model + local folders to the path
 ├── app/                        the two windows + their shared base class

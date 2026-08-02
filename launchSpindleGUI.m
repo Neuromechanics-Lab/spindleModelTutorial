@@ -1,7 +1,11 @@
-function fig = launchSpindleTutorial()
-% launchSpindleTutorial  Launcher for the muscle spindle model apps.
+function fig = launchSpindleGUI()
+% launchSpindleGUI  Launcher for the muscle spindle model apps.
 %
-%   launchSpindleTutorial() opens a small chooser with two options:
+%   This is the ENTRY POINT: it opens a small chooser, and the two windows it
+%   offers have their own launchers (launchSpindleTutorialGUI,
+%   launchSpindleToolkitGUI) if you want to skip the menu.
+%
+%   launchSpindleGUI() opens a small chooser with two options:
 %
 %     * Interactive Tutorial (Learn) - Overview, Guided walkthrough, Playground.
 %       Understand the model by exploring it. Needs only the core toolbox.
@@ -13,9 +17,9 @@ function fig = launchSpindleTutorial()
 %   (a tiny throwaway simulation) so MATLAB's one-time just-in-time compilation
 %   happens while you read the menu -- the first real simulation is then quick.
 %
-%   fig = launchSpindleTutorial() returns the launcher figure. To skip the menu:
-%       launchSpindleTutorialApp   % opens the tutorial directly
-%       launchSpindleToolkit       % opens the toolkit directly
+%   fig = launchSpindleGUI() returns the launcher figure. To skip the menu:
+%       launchSpindleTutorialGUI   % opens the tutorial directly
+%       launchSpindleToolkitGUI    % opens the toolkit directly
 %
 %   Requirements: MATLAB R2020a+, Signal Processing Toolbox, and the sibling
 %   matlabMuscleSpindleModellingTools toolbox (see setupTutorialPaths).

@@ -30,9 +30,12 @@ function d = loadUserData(filePath)
 %                    half-sarcomere nm (resting ~1250 nm).       [recommended]
 %
 %     alphaAct       [1xN] extrafusal (alpha) activation, 0..1 or 0..100 %.
+%                    Omitted -> 0 (a passive muscle).
 %                    Omitted = 0, i.e. a passive (unactivated) muscle. [optional]
-%     chainAct       [1xN] gamma-static (chain) activation, 0..1 or 0..100 %. [forward]
-%     bagAct         [1xN] gamma-dynamic (bag) activation, 0..1 or 0..100 %.  [forward]
+%     chainAct       [1xN] chain (gamma-static) activation, 0..1 or 0..100 %.
+%                    Omitted -> 0 (silent).                                  [forward]
+%     bagAct         [1xN] bag (gamma-dynamic) activation, 0..1 or 0..100 %.
+%                    Omitted -> 0 (silent).                                  [forward]
 %     targetFiring   [1xN] Ia firing rate to fit (spikes/s).                  [optimize]
 %     tendonStiffness  scalar tendon stiffness (default 5000).               [optional]
 %

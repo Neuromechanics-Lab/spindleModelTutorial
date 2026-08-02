@@ -6,7 +6,7 @@ function launchLearnAppDeployed()
 %   window - Overview, Guided walkthrough, Playground - and keeps the process
 %   alive until the window is closed.
 %
-%   NOT the same as launchSpindleTutorialApp, which is for running from the
+%   NOT the same as launchSpindleTutorialGUI, which is for running from the
 %   MATLAB prompt. This one differs in the two ways a compiled app needs:
 %     - it guards setupTutorialPaths with ~isdeployed (paths are baked into the
 %       bundle, so calling it in a deployed app would be wrong), and
