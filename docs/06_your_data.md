@@ -100,13 +100,7 @@ cost = sqrt(mean((mN - dN).^2));
 ```
 
 This is the cost the manuscript minimizes
-(`objFuncWithFixedTiming_Bspline_5cp_normSmooth.m` in `gammaDriveOptimization`),
-and it matters for a specific reason. Comparing **absolute** traces makes the cost
-punish any difference in overall level, and that punishment lands on the
-gamma-**dynamic** drive: once gamma-static already matches the recorded amplitude,
-adding bag drive only pushes the model above the data, so the optimizer turns it
-off and the burst timing stops being identifiable. Normalizing both traces removes
-that penalty.
+(`objFuncWithFixedTiming_Bspline_5cp_normSmooth.m` in `gammaDriveOptimization`).
 
 ### Why the default fits the receptor potential
 
