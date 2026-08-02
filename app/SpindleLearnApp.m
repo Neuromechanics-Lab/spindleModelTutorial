@@ -169,20 +169,26 @@ classdef SpindleLearnApp < SpindleAppBase
             row = obj.addSliderRow(sc, row, 'protocol_freq', 'Frequency (Hz) [sine & triangle]', 0.5, 3, 1);
 
             % Extrafusal muscle-tendon unit
-            row = obj.addPanelHeader(sc, row, 'Extrafusal MTU (\alpha drive + tendon)');
-            row = obj.addSliderRow(sc, row, 'mtu_alphaLevel', '\alpha (extrafusal) activation (%)', 0, 100, 35);
+            row = obj.addPanelHeader(sc, row, 'Extrafusal MTU (alpha drive + tendon)');
+            row = obj.addSliderRow(sc, row, 'mtu_alphaLevel', 'Alpha (extrafusal) activation (%)', 0, 100, 35);
             row = obj.addSliderRow(sc, row, 'mtu_tendonStiffness', 'Tendon stiffness', 1000, 20000, 5000);
 
             % Gamma drive - in % activation, matching the Activation plot
             row = obj.addPanelHeader(sc, row, 'Gamma drive  (% activation)');
-            obj.ctrl.gamma_chainMode = obj.addDropdownRow(sc, row, '\gamma-static (chain) mode', ...
+            % Spelled out, not '\gamma': these labels become uilabel Text, which
+            % is rendered literally - a TeX escape shows on screen as a backslash.
+            % 'Chain mode', not 'Chain (gamma-static) mode': the dropdown row gives
+            % the label only ~45% of the width, so anything longer is truncated
+            % with an ellipsis. The section header already says GAMMA DRIVE, and
+            % the sliders below are 'Chain onset', 'Chain activation', etc.
+            obj.ctrl.gamma_chainMode = obj.addDropdownRow(sc, row, 'Chain mode', ...
                 {'constant','sine'}, 'constant'); row = row + 1;
             row = obj.addSliderRow(sc, row, 'gamma_chainOn', 'Chain onset (s)', 0.0, 1.5, 0.3);
             row = obj.addSliderRow(sc, row, 'gamma_chainLevel_pct', 'Chain activation (%) [sine: mean]', 0, 100, 50);
             row = obj.addSliderRow(sc, row, 'gamma_chainAmp_pct', 'Chain sine amplitude (%) [sine]', 0, 50, 20);
             row = obj.addSliderRow(sc, row, 'gamma_chain_freq', 'Chain sine frequency (Hz) [sine]', 0.25, 3, 1.0);
             row = obj.addSliderRow(sc, row, 'gamma_chainPhase_s', 'Chain sine phase (s after onset) [sine]', -1, 1, 0.0);
-            row = obj.addSliderRow(sc, row, 'gamma_bagBurst_pct', 'Bag / \gamma-dynamic burst activation (%)', 0, 100, 90);
+            row = obj.addSliderRow(sc, row, 'gamma_bagBurst_pct', 'Bag (gamma-dynamic) burst activation (%)', 0, 100, 90);
             row = obj.addSliderRow(sc, row, 'gamma_bagOn', 'Bag burst onset (s)', 0.0, 1.5, 0.3);
             row = obj.addSliderRow(sc, row, 'gamma_bagOff', 'Bag burst offset (s)', 0.4, 2.5, 1.1);
 

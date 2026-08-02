@@ -195,6 +195,35 @@ nfail = nfail + check('saved .mat carries the key signals', ...
     isfield(chk,'t') && isfield(chk,'IFR') && isfield(chk,'forceBag'));
 delete(fs{1}); delete(fs{2}); delete(fmm);
 
+% ---- 10. An optimize-kind save records HOW the fit was configured -------
+% Without these the file is ambiguous: fitOptimised is a receptor potential in
+% the default mode but a firing rate in 'firing' mode, and the parameter vector
+% is 8 long for the B-spline gamma-static models against 4 for 'constant'.
+ropt = runOptFromData(exampleUserData(), struct('maxIter', 1));
+fo = saveUserResults(fullfile(tempdir, 'smoke_opt'), ropt, 'optimize');
+so = load(fo{1});
+nfail = nfail + check('optimize save records fitTarget/solver/gammaStatic', ...
+    isfield(so,'fitTarget') && isfield(so,'solver') && isfield(so,'gammaStatic'));
+nfail = nfail + check('optimize CSV labels the fit column by its units', ...
+    ismember('fitOptimised_r_au', readtable(fo{2}).Properties.VariableNames));
+delete(fo{1}); delete(fo{2});
+
+% ---- 11. No TeX escapes leak into UI text ------------------------------
+% uilabel/uidropdown render their text LITERALLY, so a '\gamma' that is correct
+% in an axes label shows up on screen as a backslash. Axes text is exempt here
+% because it does interpret TeX. This check exists because four such labels
+% shipped before anyone looked at the rendered window.
+nTex = 0;
+for appCtor = {@SpindleLearnApp, @SpindleToolkitApp}
+    aa = appCtor{1}();
+    for k = 1:numel(aa.TabGroup.Children)
+        aa.TabGroup.SelectedTab = aa.TabGroup.Children(k); drawnow;
+    end
+    nTex = nTex + countTexLeaks(aa.UIFigure);
+    delete(aa.UIFigure);
+end
+nfail = nfail + check('no TeX escapes in rendered UI labels', nTex == 0);
+
 % ---- Summary ----------------------------------------------------------
 if nfail == 0
     fprintf('\nALL CHECKS PASSED.\n\n');
@@ -211,5 +240,30 @@ if condition
 else
     fprintf('  [FAIL] %s\n', name);
     failed = 1;
+end
+end
+
+
+function n = countTexLeaks(fig)
+% Visible text on a UI component that still contains a backslash escape.
+n = 0;
+h = findall(fig);
+for k = 1:numel(h)
+    c = h(k);
+    if isa(c, 'matlab.graphics.axis.Axes') || isa(c, 'matlab.graphics.primitive.Text')
+        continue    % axes text interprets TeX, so '\gamma' is correct there
+    end
+    for prop = {'Text', 'Items'}
+        if ~isprop(c, prop{1}), continue; end
+        v = c.(prop{1});
+        if ischar(v) || isstring(v), v = {char(v)}; end
+        if ~iscell(v), continue; end
+        for j = 1:numel(v)
+            if ischar(v{j}) && contains(v{j}, '\') && ~contains(v{j}, '\n')
+                fprintf('    TeX leak: %s\n', strtrim(v{j}(1:min(70,end))));
+                n = n + 1;
+            end
+        end
+    end
 end
 end

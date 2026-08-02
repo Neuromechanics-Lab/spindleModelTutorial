@@ -72,12 +72,30 @@ switch lower(kind)
         S.costOptimised = res.fvalOpt;
         S.history       = res.history;
         S.gammaOpt      = res.gammaOpt;    % recovered drive (pCa traces)
-        S.units = struct('t','s','firing','spikes/s','gamma','pCa');
+
+        % How the fit was configured. Without these the file is ambiguous:
+        % fitOptimised is a RECEPTOR POTENTIAL in the default 'receptor' mode but
+        % a FIRING RATE in 'firing' mode, and paramNames has 8 entries for the
+        % B-spline gamma-static models against 4 for 'constant'.
+        S.fitTarget   = res.fitTarget;
+        S.fitUnits    = res.fitUnits;
+        S.solver      = res.solver;
+        S.gammaStatic = res.gammaStatic;
+        S.cyclePeriod = res.cyclePeriod;   % [] unless gammaStatic is periodic
+
+        if strcmp(res.fitTarget, 'receptor')
+            fitUnitSuffix = 'r_au';        % receptor potential, arbitrary units
+        else
+            fitUnitSuffix = 'sps';
+        end
+        S.units = struct('t','s','target','spikes/s', ...
+            'fit', res.fitUnits, 'gamma','pCa');
 
         T = table(res.t(:), res.target(:), res.fit0(:), res.fitOpt(:), ...
             res.gammaOpt.chainPca(:), res.gammaOpt.bagPca(:), ...
-            'VariableNames', {'time_s','targetFiring_sps','fitInitial_sps', ...
-            'fitOptimised_sps','chainGamma_pCa','bagGamma_pCa'});
+            'VariableNames', {'time_s','targetFiring_sps', ...
+            ['fitInitial_' fitUnitSuffix], ['fitOptimised_' fitUnitSuffix], ...
+            'chainGamma_pCa','bagGamma_pCa'});
 
     otherwise
         error('saveUserResults:kind', 'kind must be ''forward'' or ''optimize''.');
