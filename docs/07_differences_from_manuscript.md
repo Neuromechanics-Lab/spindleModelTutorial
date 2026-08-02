@@ -65,7 +65,8 @@ favours the tutorial's default — but it is a real difference, not a wash.
 ### 4. Burst timing is fixed, with no outer grid
 **Manuscript:** an outer grid over the γ-dynamic on/off times — 7×7 coarse then
 5×5 refine, spanning 2–98% of the cycle, with a `patternsearch` fit of the 7
-inner parameters at *every node* (245 fits, run in parallel).
+inner parameters at *every node*, then an 8-start polish at the best timing —
+82 fits in all, run in parallel.
 **Tutorial:** timing is fixed at 10%/60% and only the inner 7 parameters are fit
 — **one** fit. This is the single biggest difference in optimization effort. It
 also means the fit is handed the true burst timing, since the same fixed values
@@ -96,14 +97,16 @@ Your-data tab defaults to `fmincon` instead — see below). The settings differ:
 | MeshTolerance / StepTolerance | 1e-4 / 1e-8 | defaults |
 | PollMethod | `GPSPositiveBasis2N` | default |
 | Parameter scaling | phase × 10 (`scaleVec_inner`) | none |
-| Initial guess | midpoint of the bounds | bag 7.0, cp 6.5, phase 0 |
+
+The manuscript's grid fits use the settings above; its final polish runs a longer
+budget (1000 evaluations, 300 iterations, mesh 1e-5, step 1e-9).
 
 The phase scaling matters: phase spans ±0.32 s while the pCa parameters span 4.5
 units, so an unscaled search takes effectively tiny steps in phase.
 
 ### 6. Horizon
-**Manuscript:** simulates 4.5 s, then trims the *cost window* to
-`sineStart + 2.7` cycles for speed.
+**Manuscript:** simulates 4.5 s, trimmed to `sineStart + 2.7` cycles for speed;
+the cost is scored over gait-cycle phase 0–1.5.
 **Tutorial:** 1.6 s for the gamma demo, 1.8 s for the Your-data example (≈2–3
 cycles), chosen to keep an interactive fit to a few minutes. The cost windows are
 comparable; the settling before it is not.
@@ -122,7 +125,7 @@ gamma slider ~1.3 s. The two fits in the Analysis Toolkit take minutes:
 Parallel is worth 2.6× on the gamma fit, because patternsearch's 2N poll points
 are independent; the first run pays a one-off ~45 s pool startup. Both fits are
 far below the manuscript's own budget (200 iterations / 400 evaluations per
-node, at 245 nodes).
+node, at 74 grid nodes plus an 8-start polish).
 
 The two tabs default to *different* solvers. The gamma demo uses patternsearch
 (the manuscript's, and it reaches a ~4× lower cost here than fmincon). The
@@ -133,7 +136,7 @@ switchable via `opts.solver` or the **Solver** dropdown.
 
 ## What this costs you
 
-The demo runs ONE fit with burst timing fixed, where the manuscript runs 245 with
+The demo runs ONE fit with burst timing fixed, where the manuscript runs 82 with
 timing searched. Because that fixed timing is also the timing used to build the
 target, the fit starts with information it would not have on real data — so the
 per-parameter recovery numbers this demo reports are **not** evidence about which

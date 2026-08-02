@@ -7,6 +7,10 @@ function c = meanNormRMSE(model, data)
 %       mN = model / mean(model);  dN = data / mean(data);
 %       c  = sqrt(mean((mN - dN).^2));
 %
+%   The manuscript scales this by 1/100 before returning it. That is a constant,
+%   so the minimum is in the same place; it only means cost VALUES here are 100x
+%   the ones its scripts print.
+%
 %   WHY normalize both. Comparing ABSOLUTE traces makes the cost punish any
 %   difference in overall level, and that punishment lands on the gamma-dynamic
 %   drive: once gamma-static already matches the recorded amplitude, adding bag

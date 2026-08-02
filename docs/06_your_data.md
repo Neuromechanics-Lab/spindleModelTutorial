@@ -100,7 +100,9 @@ cost = sqrt(mean((mN - dN).^2));
 ```
 
 This is the cost the manuscript minimizes
-(`objFuncWithFixedTiming_Bspline_5cp_normSmooth.m` in `gammaDriveOptimization`).
+(`objFuncWithFixedTiming_Bspline_5cp_normSmooth.m` in `gammaDriveOptimization`),
+which scales it by 1/100 before returning — a constant, so the minimum is in the
+same place, but cost values here are 100× the ones its scripts print.
 
 ### Why the default fits the receptor potential
 

@@ -21,10 +21,11 @@ optimization.
 An optimizer minimizes the mismatch between the model's Ia and the target. The
 manuscript uses **`patternsearch` throughout**: a two-stage grid over the burst
 timing — a 7×7 coarse pass, then a 5×5 refine — with a full `patternsearch` fit
-of the remaining parameters at every node. The "hybrid" in
-`hybridOptimizationGammaDrive_Bspline_5cp_grid` refers to that grid-plus-search
-structure, not to mixing solvers: `fmincon` is not part of it. In the real
-project the target is experimental Ia data (Taylor et al.).
+of the remaining parameters at every node, followed by an 8-start polish at the
+best timing. The "hybrid" in `hybridOptimizationGammaDrive_Bspline_5cp_grid`
+refers to that grid-plus-search structure, not to mixing solvers: `fmincon` is
+not part of it. In the real project the target is experimental Ia data
+(Taylor et al.).
 
 ## What the tutorial actually runs
 
@@ -70,10 +71,10 @@ comparison between the bag and the γ-static waveform is confounded by the bag
 having been given something the chain was not.
 
 The manuscript does not fix timing. It searches it on a 7×7 coarse plus 5×5
-refine outer grid, running a full inner fit at every node — 245 fits — precisely
-because this is a hard optimization. The demo runs a single pass so it finishes
-interactively. Treat it as a walk-through of the workflow, not as evidence about
-identifiability.
+refine outer grid, running a full inner fit at every node and then an 8-start
+polish — 82 fits — precisely because this is a hard optimization. The demo runs a
+single pass so it finishes interactively. Treat it as a walk-through of the
+workflow, not as evidence about identifiability.
 
 ### Notes on identifiability and speed
 
@@ -95,5 +96,5 @@ identifiability.
 | `tutorialForwardSim` / `runExtrafusalMTU` | `runSpindleSimForGammaFwdSim`, `getExtrafusalConstMTU` |
 | `tutorialOptDemo` (calls the real B-spline sim) | `runSpindleSimForOpt_Bspline_5cp`, `getIntrafusal_pCa_Bspline_5cp` |
 | objective (mean-normalized RMSE, `meanNormRMSE`) | `objFuncWithFixedTiming_Bspline_5cp_normSmooth` |
-| `patternsearch` loop (single pass, timing fixed) | `hybridOptimizationGammaDrive_Bspline_5cp_grid` (245 fits over a timing grid) |
+| `patternsearch` loop (single pass, timing fixed) | `hybridOptimizationGammaDrive_Bspline_5cp_grid` (82 fits over a timing grid) |
 | simulated target | experimental Ia data (Taylor et al.) |
