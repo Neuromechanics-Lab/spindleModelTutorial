@@ -74,12 +74,17 @@ is a separate step, and the integrate-and-fire the toolbox ships
 (`integrateAndFire_v2`) is limited by the time step in two ways at `dt = 1 ms`:
 its ceiling is `1/(refractory + 2*dt)` = **250 spikes/s**, and because spikes land
 on samples the rate is quantised to `1/(k*dt)` — 250, 200, 167, 143, … Any
-realistic gamma drive saturates it, so the firing trace flattens and shows the
-time step rather than the spindle.
+realistic gamma drive saturates it, so the firing trace flattens — but that
+reflects a limitation of the time step used in simulation rather than anything
+about the model.
 
-So the app plots `r`, and **`examples/spikesFromReceptorPotential.m`** gives a
-worked spike generator you can adapt: it runs on any simulation, checks for
-saturation, and explains what to change.
+So the app plots `r` everywhere except one place: the **Guided walkthrough**'s
+"from receptor potential to spikes" step draws the generator's output directly
+under the `r` that produced it, so the ceiling and the quantised steps are
+visible rather than merely described. For your own work,
+**`examples/spikesFromReceptorPotential.m`** gives a worked spike generator you
+can adapt: it runs on any simulation, checks for saturation, and explains what to
+change.
 
 ## Differences from the manuscript
 

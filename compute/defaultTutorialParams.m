@@ -93,5 +93,8 @@ p.trans.kFc       = 0.6;    % static gain (chain force -> rs)
 p.trans.kFb       = 1.1;    % dynamic force gain (bag force -> rd)
 p.trans.kYb       = 0.1;    % yank gain (bag dF/dt -> rd)
 p.trans.occlusion = false;  % branch competition between static & dynamic
-p.trans.threshold = 0.0;    % firing threshold subtracted from r
+p.trans.threshold = 0.0;    % subtracted from r inside sarc2spindle, so it shapes
+                            % the receptor potential itself - NOT the spike
+                            % generator's threshold, which lives in
+                            % examples/spikesFromReceptorPotential.m
 end

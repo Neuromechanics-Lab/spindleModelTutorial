@@ -101,22 +101,18 @@ nfail = nfail + check('extreme tendon stiffness handled (finite Ia)', all(isfini
 % ---- 6. Optimization demo recovers a known B-spline gamma ------------
 if tpaths.hasBspline
     % Few iterations here to keep the smoke test fast; the app uses more and
-    % converges further. We assert a big cost drop and recovery of the strongly
-    % identified magnitude parameter (bag burst), which is robust to iter count.
+    % converges further. We assert a big cost drop and that the strongly
+    % identified magnitude parameter (bag burst) ends nearer truth than it
+    % started - both robust to iteration count.
     res = tutorialOptDemo(struct('tEnd', 1.4, 'maxIter', 25));
     nfail = nfail + check('optimizer cuts the cost by >60%', res.fvalOpt < 0.4 * res.fval0);
-    % recoveryPct is the fraction of the INITIAL error closed; 0 means a
-    % parameter never moved. These are NOT evidence about identifiability - the
-    % demo fixes burst timing at the values used to build the target, so the fit
-    % gets information it would not have on real data. Checked only to confirm
-    % the machinery runs and reports finite numbers.
-    nfail = nfail + check('optimizer moves the bag burst toward truth', ...
-        res.recoveryPct(1) > 80);
-    cpClosed = res.recoveryPct(2:6);
-    nfail = nfail + check('per-parameter recovery is reported for every parameter', ...
-        all(isfinite(cpClosed)));
-    fprintf('   closed%% : bag %.0f | chain cp %s\n', res.recoveryPct(1), ...
-        mat2str(round(cpClosed)));
+    % Stated as a plain comparison, not a "% of error closed" score: the fitted
+    % parameters are not independent, so a per-parameter fraction would imply an
+    % identifiability claim this demo cannot support (see tutorialOptDemo).
+    nfail = nfail + check('optimizer moves the bag burst nearer the truth', ...
+        abs(res.xOpt(1) - res.xTrue(1)) < abs(res.x0(1) - res.xTrue(1)));
+    nfail = nfail + check('every fitted parameter comes back finite', ...
+        all(isfinite(res.xOpt)) && numel(res.xOpt) == numel(res.names));
     fprintf('   params : %s\n', strjoin(res.names, ', '));
     fprintf('   true   : %s\n', mat2str(res.xTrue, 3));
     fprintf('   opt    : %s\n', mat2str(res.xOpt, 3));

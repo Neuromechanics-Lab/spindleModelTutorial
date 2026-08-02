@@ -1,6 +1,6 @@
 # 4. From force to the Ia receptor potential
 
-The Ia afferent wraps around both intrafusal fibers and transduces their
+The Ia afferent innervates both intrafusal fibers and transduces their
 mechanical state into a **receptor potential** `r`, which drives firing. The
 model (`sarc2spindle_20240310.m`) builds `r` from two components:
 
@@ -22,8 +22,14 @@ where **yank** is the time-derivative of bag force, `dF/dt`.
   that makes real Ia afferents so velocity-sensitive.
 
 Forces and yank are half-wave rectified (negative values set to zero), lightly
-low-pass filtered, and scaled, before being summed. A **firing threshold** can
-be subtracted from `r`.
+low-pass filtered, and scaled, before being summed. A **receptor threshold** can
+then be subtracted from `r` (`r = r - threshold`, negatives clipped to zero).
+
+> Note this threshold belongs to the **transduction step**, not to the spike
+> generator: it is applied inside `sarc2spindle` and so changes the receptor
+> potential itself. That is why moving it in the Playground visibly reshapes the
+> `r` trace. The integrate-and-fire has its own, separate threshold — see
+> `examples/spikesFromReceptorPotential.m`.
 
 ## Occlusion (optional)
 
@@ -40,9 +46,11 @@ everything the spindle does to the stretch is already in it.
 
 Converting `r` into afferent spikes is a separate modelling choice. The toolbox
 ships one — `integrateAndFire_v2.m`, which integrates `r` and emits a spike each
-time the integral crosses a threshold, subject to a refractory period — but the
-app does not plot its output, because two limits set by the time step make it
-misleading at `dt = 1 ms`:
+time the integral crosses a threshold, subject to a refractory period. Its output
+is plotted in exactly one place — the **Guided walkthrough**'s "from receptor
+potential to spikes" step — so you can see what it does; no other panel in either
+window shows it. Two limits set by the time step are why it is confined there at
+`dt = 1 ms`:
 
 - **Ceiling.** The refractory period is enforced by counting samples, which costs
   an extra `2*dt` on top of it, so the maximum rate is `1/(refractory + 2*dt)` =
@@ -52,7 +60,8 @@ misleading at `dt = 1 ms`:
   get coarser the faster the firing.
 
 Any realistic gamma drive pushes `r` past that ceiling and the firing trace goes
-flat, which says more about the time step than about the spindle.
+flat, but this reflects a limitation of the time step used in simulation rather
+than anything about the model.
 
 `examples/spikesFromReceptorPotential.m` runs the generator on any simulation,
 checks directly for saturation, and documents what to change — the gain/threshold

@@ -38,6 +38,13 @@ classdef SpindleToolkitApp < SpindleAppBase
         udLastKind  = '';          % 'forward' | 'optimize'
     end
 
+    properties (Constant, Access = private)
+        % Height of one result panel, in pixels. Must stay above the minimum
+        % height a uiaxes will accept, or the axes overflows its panel and its
+        % title is clipped - see the note where the results grid is built.
+        ResultRowH = 210;
+    end
+
     properties (Access = private)
         optCostIters = [];
         optCostVals  = [];
@@ -60,7 +67,13 @@ classdef SpindleToolkitApp < SpindleAppBase
 
             % Controls
             cpanel = obj.card(g, 'Optimization setup'); cpanel.Layout.Column = 1;
-            cg = uigridlayout(cpanel, [14 2]);
+            % Scrollable for the same reason as the Your-data column: this one
+            % ends with a long explanatory note, and on a short window that note
+            % pushed "Run optimization" out of reach with no way to scroll to it.
+            cgOuter = uigridlayout(cpanel, [1 1]);
+            cgOuter.Padding = [4 4 4 4]; cgOuter.BackgroundColor = obj.S.card;
+            cg = uigridlayout(cgOuter, [14 2]);
+            cg.Scrollable = 'on';
             cg.RowHeight = repmat({'fit'}, 1, 14);
             cg.ColumnWidth = {'1.3x','1x'};
             cg.BackgroundColor = obj.S.card;
@@ -161,7 +174,7 @@ classdef SpindleToolkitApp < SpindleAppBase
             obj.optAxGammaD = obj.axInPanel(pg, 2, 1);
             obj.optAxFit    = obj.axInPanel(pg, 1, 2);
             obj.optAxCost   = obj.axInPanel(pg, 2, 2);
-            obj.optTable  = uitable(outer, 'ColumnName', {'Parameter','True','Initial','Recovered','% of error closed'});
+            obj.optTable  = uitable(outer, 'ColumnName', {'Parameter','True','Initial','Recovered'});
             obj.optTable.Layout.Row = 2; obj.optTable.Layout.Column = 1;
             title(obj.optAxCost,   'Cost vs iteration');
             xlabel(obj.optAxCost, 'iteration'); ylabel(obj.optAxCost, 'mean-normalized RMSE');
@@ -299,8 +312,8 @@ classdef SpindleToolkitApp < SpindleAppBase
                 res = tutorialOptDemo(opts);
                 obj.optResult = res;
                 obj.plotOptResult(res);
-                obj.optStatus.Text = sprintf('Done. Cost %.3g -> %.3g. Median recovery %.0f%%.', ...
-                    res.fval0, res.fvalOpt, median(res.recoveryPct));
+                obj.optStatus.Text = sprintf('Done. Cost %.3g -> %.3g. Compare the table and the drive plots.', ...
+                    res.fval0, res.fvalOpt);
             catch ME
                 obj.optStatus.Text = ['Error: ' ME.message];
             end
@@ -348,30 +361,26 @@ classdef SpindleToolkitApp < SpindleAppBase
             xlim(obj.optAxGammaD, [gT.t(1) gT.t(end)]);
 
             % Table (all 7 fitted parameters), converted to the displayed units:
-            % activation % for the drive levels, seconds for the phase. Recovery
-            % is then recomputed in those same units so the row reads honestly.
+            % activation % for the drive levels, seconds for the phase. True /
+            % initial / recovered only - no per-parameter "% closed" score. The
+            % parameters are not independent (the 5 control points trade off
+            % against each other and against the burst), so a per-parameter
+            % fraction reads as an identifiability claim the fit cannot support.
             labels = {'Bag burst (% act.)', 'Chain CP1 @0% (% act.)', ...
                       'Chain CP2 @20% (% act.)', 'Chain CP3 @40% (% act.)', ...
                       'Chain CP4 @60% (% act.)', 'Chain CP5 @80% (% act.)', ...
                       'Waveform phase (s)'};
-            data = cell(numel(res.names), 5);
+            data = cell(numel(res.names), 4);
             for i = 1:numel(res.names)
                 switch res.names{i}
                     case 'bagPca',                  cv = pcaB2pct;
                     case {'cp1','cp2','cp3','cp4','cp5'}, cv = pcaC2pct;
                     otherwise,                      cv = @(v) v;   % phase, in seconds
                 end
-                tv = cv(res.xTrue(i)); iv = cv(res.x0(i)); ov = cv(res.xOpt(i));
                 data{i,1} = labels{i};
-                data{i,2} = round(tv, 2);
-                data{i,3} = round(iv, 2);
-                data{i,4} = round(ov, 2);
-                % Fraction of the INITIAL error closed: 0% = never moved.
-                if abs(iv - tv) < 1e-9
-                    data{i,5} = NaN;      % started at the answer: nothing to close
-                else
-                    data{i,5} = round(100 * (1 - abs(ov - tv) / abs(iv - tv)), 1);
-                end
+                data{i,2} = round(cv(res.xTrue(i)), 2);
+                data{i,3} = round(cv(res.x0(i)),    2);
+                data{i,4} = round(cv(res.xOpt(i)),  2);
             end
             obj.optTable.Data = data;
             obj.beautify(obj.optAxFit.Parent.Parent);   % the axes grid, not its panel
@@ -390,9 +399,18 @@ classdef SpindleToolkitApp < SpindleAppBase
 
             % Left: instructions + controls
             cpanel = obj.card(g, 'Bring your own inputs'); cpanel.Layout.Column = 1;
-            cg = uigridlayout(cpanel, [10 1]);
-            cg.RowHeight = {'fit','fit','fit','fit','fit','fit','fit','fit','fit','1x'};
-            cg.Padding = [12 12 12 12]; cg.RowSpacing = 8; cg.BackgroundColor = s.card;
+            % SCROLLABLE, and every row a fixed height. With '1x'/unscrolled rows
+            % the column silently drops whatever does not fit: loading data grows
+            % the info label by two lines, which was enough to push "Optimize
+            % gamma" and "Save results..." off the bottom with no scrollbar to
+            % reach them. Scrollable needs fixed rows - a '1x' row just shrinks to
+            % the container and nothing ever overflows (or scrolls).
+            cgOuter = uigridlayout(cpanel, [1 1]);
+            cgOuter.Padding = [4 4 4 4]; cgOuter.BackgroundColor = s.card;
+            cg = uigridlayout(cgOuter, [10 1]);
+            cg.Scrollable = 'on';
+            cg.RowHeight = {170, 'fit','fit','fit','fit','fit','fit','fit','fit','fit'};
+            cg.Padding = [8 8 8 8]; cg.RowSpacing = 8; cg.BackgroundColor = s.card;
 
             h = uihtml(cg); h.HTMLSource = obj.userDataHTML();  h.Layout.Row = 1;
 
@@ -475,20 +493,23 @@ classdef SpindleToolkitApp < SpindleAppBase
                 'so keeps the spike generator''s 250 spikes/s ceiling out of the objective. ' ...
                 'That matters: on the built-in example the receptor fit recovers the true bag ' ...
                 'burst while the firing fit collapses it to zero width. Prefer the default ' ...
-                'unless you want the generator in the loop. Details in docs/06_your_data.md.'], ...
+                'unless you want the spike generator in the loop. Details in docs/06_your_data.md.'], ...
                 'WordWrap', 'on', ...
                 'FontAngle', 'italic', 'FontColor', s.muted, 'FontSize', 11);
-            note.Layout.Row = 7;
+            note.Layout.Row = 9;
 
+            % Buttons ABOVE the long explanatory note, so the three actions stay
+            % visible without scrolling; the note is reference material and can
+            % sit below the fold.
             obj.udOptBtn = uibutton(cg, 'Text', 'Optimize gamma  ->  drive', 'FontWeight', 'bold', ...
                 'Enable', 'off', 'BackgroundColor', s.tagOutput, 'FontColor', [1 1 1], ...
                 'ButtonPushedFcn', @(src,e) obj.runUserOptimize());
-            obj.udOptBtn.Layout.Row = 8;
+            obj.udOptBtn.Layout.Row = 7;
 
             obj.udSaveBtn = uibutton(cg, 'Text', 'Save results...', ...
                 'Enable', 'off', 'BackgroundColor', [0.93 0.94 0.96], 'FontColor', s.navy, ...
                 'ButtonPushedFcn', @(src,e) obj.saveUserRun());
-            obj.udSaveBtn.Layout.Row = 9;
+            obj.udSaveBtn.Layout.Row = 8;
             obj.udSaveBtn.Tooltip = 'Write the last run to a .mat (everything) and a .csv (time series)';
 
             obj.udStatus = uilabel(cg, 'Text', 'Ready.', 'WordWrap', 'on', 'FontColor', s.muted);
@@ -500,8 +521,16 @@ classdef SpindleToolkitApp < SpindleAppBase
             % persistent axes in an always-visible panel avoid that entirely.
             % Forward runs use all 5 axes; optimize runs use the first 3.
             obj.udPlotPanel = obj.card(g); obj.udPlotPanel.Layout.Column = 2;
+            % FIXED row heights + scrolling, not '1x'. A uiaxes will not shrink
+            % below a minimum height, so with '1x' rows a short window squeezes
+            % the panels smaller than their axes: the axes then overflows and its
+            % title and the top of the plot box are clipped, with no scrollbar to
+            % recover them (measured: 145 px of overflow at a 640 px-tall window).
+            % Fixed rows guarantee every panel is big enough to hold its axes and
+            % let the column scroll when the window cannot show them all.
             rg = uigridlayout(obj.udPlotPanel, [5 1]);
-            rg.RowHeight = repmat({'1x'}, 1, 5); rg.ColumnWidth = {'1x'};
+            rg.Scrollable = 'on';
+            rg.RowHeight = repmat({obj.ResultRowH}, 1, 5); rg.ColumnWidth = {'1x'};
             rg.Padding = [8 8 8 8]; rg.RowSpacing = 8; rg.BackgroundColor = s.card;
             obj.udResAx = gobjects(1, 5);
             for i = 1:5, obj.udResAx(i) = obj.axInGrid(rg, i); end
@@ -583,7 +612,8 @@ classdef SpindleToolkitApp < SpindleAppBase
             % walkthrough step "From receptor potential to spikes" for why.
             for i = 1:4, a(i).Visible = 'on'; end
             a(5).Visible = 'off';
-            a(1).Parent.Parent.RowHeight = {'1x','1x','1x','1x',0};   % panel -> grid
+            h = obj.ResultRowH;
+            a(1).Parent.Parent.RowHeight = {h,h,h,h,0};   % panel -> grid
             obj.axLength(a(1), out);
             obj.axActivation(a(2), out);
             obj.axForce(a(3), out);
@@ -636,7 +666,8 @@ classdef SpindleToolkitApp < SpindleAppBase
             obj.clearUDAxes(a);
             for i = 1:4, a(i).Visible = 'on'; end
             a(5).Visible = 'off';                          % optimize uses 4 panels
-            a(1).Parent.Parent.RowHeight = {'1x','1x','1x','1x', 0};  % panel -> grid
+            h = obj.ResultRowH;
+            a(1).Parent.Parent.RowHeight = {h,h,h,h,0};  % panel -> grid
 
             % Fit vs target. Both traces are shown MEAN-NORMALIZED, because that
             % is what the cost actually minimized - drawing them in raw units
@@ -743,7 +774,7 @@ classdef SpindleToolkitApp < SpindleAppBase
 '<ul>', ...
 '<li><code>t</code> - time (s), ~1 ms step</li>', ...
 '<li><code>mtuLength</code> <i>or</i> <code>fascicleLength</code> - length (nm)</li>', ...
-'<li><code>alphaAct</code> - &alpha; activation (0-1 or %)  <i>opt.</i></li>', ...
+'<li><code>alphaAct</code> - &alpha; activation (0-1 or %)  <i>optional</i></li>', ...
 '<li class="k"><code>chainAct</code>, <code>bagAct</code> - &gamma; activations &rarr; for a FORWARD run</li>', ...
 '<li class="k"><code>targetFiring</code> - Ia rate (spikes/s) &rarr; to OPTIMIZE &gamma;</li>', ...
 '</ul>', ...

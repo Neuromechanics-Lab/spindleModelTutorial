@@ -232,16 +232,14 @@ result.fit0     = interp1(t0(:), fit0(:), tgt_t(:), 'linear', 'extrap');
 result.fitOpt   = interp1(tO(:), fitOpt(:), tgt_t(:), 'linear', 'extrap');
 result.fval0    = fval0;
 result.fvalOpt  = fvalOpt;
-% Recovery = how much of the INITIAL error the fit actually closed, not how
-% close the answer is to truth relative to the bound range. The old form gave a
-% parameter that never moved 80-98% simply because the bounds are wide, which
-% flattered exactly the parameters the fit fails to identify. 0% now means "did
-% not move", 100% means "nailed it", negative means "moved away".
-initErr = abs(x0 - xTrue);
-result.recoveryPct = 100 * (1 - abs(xOpt - xTrue) ./ initErr);
-% A parameter that STARTED at the right answer has no error to close, so the
-% fraction is undefined rather than 100%. Mark it NaN instead of dividing by ~0.
-result.recoveryPct(initErr < 1e-3 * (ub - lb)) = NaN;
+% Deliberately NO per-parameter recovery score. Any such fraction reads as a
+% statement about how well each parameter was identified, and this fit cannot
+% support that: the 5 gamma-static control points trade off against each other
+% and against the burst, so one moving away from truth while another compensates
+% is a perfectly good fit, not a failure of that parameter. The fraction also
+% has no value at all when a parameter starts at the answer (zero denominator).
+% Report the raw numbers - true, initial, optimized - and the cost, and let the
+% drive plots show whether the WAVEFORM was recovered.
 result.gammaTrue = gammaTrue;
 result.gammaOpt  = gammaOpt;
 result.cycle_period = cycle_period;

@@ -14,6 +14,10 @@ classdef SpindleAppBase < handle
         TabGroup
     end
 
+    properties (Access = private)
+        inResize = false;   % re-entrancy guard for onFigureResized
+    end
+
     methods
         function makeFigure(obj, name)
             % Create the app window + tab group, and load the shared palette.
@@ -23,6 +27,35 @@ classdef SpindleAppBase < handle
             outer = uigridlayout(obj.UIFigure, [1 1]);
             outer.Padding = [6 6 6 6];
             obj.TabGroup = uitabgroup(outer);
+            % Panels follow the window when it is resized, but a uiaxes inside
+            % one does not always follow with them - maximising leaves the axes
+            % at its old size, so it overflows its panel and the title and top of
+            % the plot box are cut off. Re-fit every axes whenever the window
+            % changes size.
+            % A LISTENER, not SizeChangedFcn: that callback is silently ignored
+            % while AutoResizeChildren is 'on' (MATLAB warns and never calls it),
+            % and turning AutoResizeChildren off would break the grid layout that
+            % does the actual resizing. The event fires either way.
+            addlistener(obj.UIFigure, 'SizeChanged', @(~,~) obj.onFigureResized());
+        end
+
+        function onFigureResized(obj)
+            % Re-assert "axes exactly fills its panel" for every axes in the
+            % window. Guarded against re-entry: fillPanel toggles the axes units
+            % to force a layout pass, and we must not have that re-trigger us.
+            if obj.inResize, return; end
+            obj.inResize = true;
+            try
+                axl = findobj(obj.UIFigure, 'Type', 'axes');
+                for i = 1:numel(axl)
+                    if isa(axl(i).Parent, 'matlab.ui.container.Panel')
+                        SpindleAppBase.fillPanel(axl(i).Parent, axl(i));
+                    end
+                end
+            catch
+                % Layout polish only - never let it break the window.
+            end
+            obj.inResize = false;
         end
 
         % ================================================================
@@ -208,10 +241,12 @@ classdef SpindleAppBase < handle
         end
 
         function axFiring(obj, ax, out)
-            % NOT used by either window any more - the apps stop at the receptor
-            % potential (see docs/04_receptor_potential.md for why). Kept because
-            % it is the natural way to draw firing if you add a panel back, and
-            % it matches the plot in examples/spikesFromReceptorPotential.m.
+            % Used in exactly ONE place: the guided walkthrough's "from receptor
+            % potential to spikes" step, which shows what the toolbox spike
+            % generator does and why its output is time-step-limited. Every other
+            % panel in both windows stops at the receptor potential (see
+            % docs/04_receptor_potential.md). Matches the plot in
+            % examples/spikesFromReceptorPotential.m.
             s = obj.S;
             if ~isempty(out.t_firing)
                 % Draw the rate as a STAIRCASE, not stems: a second of firing at

@@ -2,15 +2,18 @@
 
 This is the mechanistic heart of the model. Active force is not a lumped
 equation — it emerges from a **population of myosin cross-bridges**, each bound
-to actin at some strain `x`.
+to actin at some displacement `x`.
 
-## Strain bins
+## Displacement bins
 
-The model tracks how many cross-bridges are bound at each strain, across a grid
-of **strain bins** (`x_bins`, roughly −20 to +20 nm). This is `bin_pops`: a
-distribution of bound heads over strain. Each bound head behaves like a spring,
-so the fiber's active force is the sum, over all bins, of (number of heads) ×
-(their strain + power-stroke):
+The model tracks how many cross-bridges are bound at each displacement, across a
+grid of **displacement bins** (`x_bins`, roughly −20 to +20 nm). `x` is a
+*length* — how far a bound head is stretched from its neutral position, in
+nanometres — not a strain: it is never divided by a reference length, and it
+carries units. This is `bin_pops`: a distribution of bound heads over
+displacement. Each bound head behaves like a spring, so the fiber's active force
+is the sum, over all bins, of (number of heads) × (their displacement +
+power-stroke):
 
 ```
    cb_force ∝ Σ  bin_pops(x) · (x + power_stroke)
@@ -21,12 +24,13 @@ so the fiber's active force is the sum, over all bins, of (number of heads) ×
 Two things change the distribution at every time step:
 
 1. **Kinetics (attachment / detachment).** Heads attach at a rate `f` and
-   detach at a strain-dependent rate `g`. Calcium (pCa) gates how much actin is
-   available to bind. This is integrated with an ODE solver each step
+   detach at a displacement-dependent rate `g`. Calcium (pCa) gates how much
+   actin is available to bind. This is integrated with an ODE solver each step
    (`evolve_cbDist`). More activation → more bound heads → more force.
 2. **Movement (shifting).** When the fiber changes length, the whole
-   distribution is **shifted** along the strain axis (`shift_cbDist`): stretching
-   drags bound heads to positive strain, raising their spring force immediately.
+   distribution is **shifted** along the displacement axis (`shift_cbDist`):
+   stretching drags bound heads to positive displacement, raising their spring
+   force immediately.
    A `compliance_factor` accounts for filament compliance (only part of the
    length change reaches the cross-bridges).
 

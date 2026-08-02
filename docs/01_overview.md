@@ -1,10 +1,15 @@
 # 1. Overview
 
-A **muscle spindle** is a stretch sensor embedded among muscle fibers. It
-reports muscle length and its rate of change to the nervous system through the
-firing of its **Ia afferent**. This model predicts that Ia signal *from first
-principles* — starting from the molecular cross-bridges inside the spindle's own
-tiny muscle fibers.
+A **muscle spindle** is a sensory organ embedded in muscle. It reports muscle
+length and its rate of change to the nervous system through the firing of its
+**Ia afferent**. This model predicts that Ia signal *from first principles* —
+starting from the molecular cross-bridges inside the spindle's own tiny muscle
+fibers.
+
+The model's output is the Ia **receptor potential**. In the animal that receptor
+potential is converted into the afferent's **firing rate**; this tutorial stops
+at the receptor potential and does not simulate that conversion. See
+[4. The receptor potential](04_receptor_potential.md) for why.
 
 ## The pipeline
 
@@ -15,7 +20,7 @@ tiny muscle fibers.
      EXTRAFUSAL muscle-tendon unit           ← α-driven muscle in series with tendon
                      │
                      ▼
-          fascicle length                     ← what the spindle actually feels
+          fascicle length                     ← what the spindle fibers experience
                      │  +  gamma (γ) drive
                      ▼
         bag & chain intrafusal fibers         ← cross-bridge (myosin) mechanics
@@ -24,10 +29,7 @@ tiny muscle fibers.
        fiber force  and  yank (dF/dt)
                      │
                      ▼
-     Ia receptor potential  r = r_s + r_d
-                     │
-                     ▼
-         Ia receptor potential
+     Ia receptor potential  r = r_s + r_d      ← the model's output
 ```
 
 (The cross-bridge distribution that generates fiber force is the mechanistic
