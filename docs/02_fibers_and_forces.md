@@ -31,7 +31,7 @@ fiber develops more active force.
 
 In the code, `makeGammaDrive.m` turns the gamma-drive parameters into the
 per-time-step pCa traces `sarcB.pCa` (bag) and `sarcC.pCa` (chain) that the
-simulation consumes.
+simulation uses.
 
 ## What movement does
 
@@ -43,9 +43,9 @@ and the intrafusal fibers inherit it. Because the bag and chain fibers lie
 mechanically in parallel, they experience the *same* fascicle length change.
 Their forces differ only because their cross-bridge kinetics differ:
 
-- The **bag** fiber (fast kinetics) throws up a sharp force transient when the
+- The **bag** fiber generates a sharp force transient when the
   fiber is moving, then relaxes.
-- The **chain** fiber (slower kinetics) settles to a more sustained force set by
+- The **chain** fiber settles to a more sustained force set by
   the new length.
 
 ## Try it
