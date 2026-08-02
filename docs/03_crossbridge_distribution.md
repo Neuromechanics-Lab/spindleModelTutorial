@@ -1,7 +1,6 @@
 # 3. The cross-bridge distribution
 
-This is the mechanistic heart of the model. Active force is not a lumped
-equation — it emerges from a **population of myosin cross-bridges**, each bound
+This is the mechanistic force generation in the model. Active force emerges from a **population of myosin cross-bridges**, each bound
 to actin at some displacement `x`.
 
 ## Displacement bins
@@ -9,8 +8,7 @@ to actin at some displacement `x`.
 The model tracks how many cross-bridges are bound at each displacement, across a
 grid of **displacement bins** (`x_bins`, roughly −20 to +20 nm). `x` is a
 *length* — how far a bound head is stretched from its neutral position, in
-nanometres — not a strain: it is never divided by a reference length, and it
-carries units. This is `bin_pops`: a distribution of bound heads over
+nanometres. This is `bin_pops`: a distribution of bound heads over
 displacement. Each bound head behaves like a spring, so the fiber's active force
 is the sum, over all bins, of (number of heads) × (their displacement +
 power-stroke):
@@ -33,10 +31,6 @@ Two things change the distribution at every time step:
    force immediately.
    A `compliance_factor` accounts for filament compliance (only part of the
    length change reaches the cross-bridges).
-
-The interplay is what makes the spindle *dynamic*: a stretch first **shifts** the
-existing bound heads (fast force rise = high yank), then kinetics **relax** the
-distribution back toward a new steady state (force adaptation during the hold).
 
 ## Bag vs chain
 
