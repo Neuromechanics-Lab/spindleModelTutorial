@@ -1,7 +1,9 @@
 cff-version: 1.2.0
 message: >-
-  If you use this software, please cite both the software itself and the
-  model paper it implements (see preferred-citation below).
+  If you use this software, please cite the specific VERSION you used —
+  each release is archived with its own DOI, and results can differ
+  between versions. The model it implements is described in Simha et al.
+  (2026); please cite that paper for the science (see references below).
 title: "Muscle Spindle Model — Interactive Tutorial"
 abstract: >-
   An interactive, tutorial-style MATLAB app for the biophysical muscle
@@ -25,20 +27,24 @@ keywords:
   - fusimotor drive
   - MATLAB
 
-preferred-citation:
-  type: article
-  title: >-
-    The mammalian muscle spindle as a tunable feedback controller in
-    locomotion
-  authors:
-    - family-names: Simha
-      given-names: Surabhi
-    - family-names: Sawicki
-      given-names: Gregory
-    - family-names: Cope
-      given-names: Timothy
-    - family-names: Ting
-      given-names: Lena
-  journal: bioRxiv
-  year: 2026
-  doi: 10.64898/2026.07.03.736206
+# No preferred-citation: GitHub's "Cite this repository" button shows the
+# preferred citation when one exists, which would surface the paper instead of
+# the software. The paper is listed under references so it stays in the
+# metadata without displacing the software citation.
+references:
+  - type: article
+    title: >-
+      The mammalian muscle spindle as a tunable feedback controller in
+      locomotion
+    authors:
+      - family-names: Simha
+        given-names: Surabhi
+      - family-names: Sawicki
+        given-names: Gregory
+      - family-names: Cope
+        given-names: Timothy
+      - family-names: Ting
+        given-names: Lena
+    journal: bioRxiv
+    year: 2026
+    doi: 10.64898/2026.07.03.736206
