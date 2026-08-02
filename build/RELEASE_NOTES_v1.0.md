@@ -60,7 +60,7 @@ cd spindleModelTutorial
 Then, in MATLAB:
 
 ```matlab
-launchSpindleTutorial     % pick Interactive Tutorial (Learn) or Analysis Toolkit (Apply)
+launchSpindleGUI          % pick Interactive Tutorial (Learn) or Analysis Toolkit (Apply)
 ```
 
 **Nothing else to install** — the muscle spindle model code is included under
