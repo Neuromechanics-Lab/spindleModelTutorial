@@ -9,3 +9,9 @@ tools/refreshVendor.m.
   gammaDriveOptimization            : 257a882
 
 Files: 14
+
+Licence
+-------
+Both source repositories were written by the same author as this one
+(Surabhi N. Simha), so these copies carry no third-party licence: they
+are covered by the MIT LICENSE at the root of this repository.

@@ -1,0 +1,44 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite both the software itself and the
+  model paper it implements (see preferred-citation below).
+title: "Muscle Spindle Model — Interactive Tutorial"
+abstract: >-
+  An interactive, tutorial-style MATLAB app for the biophysical muscle
+  spindle model of Simha et al. (2026). It exposes the model's inputs,
+  intermediate signals, and Ia receptor potential for exploration, and
+  fits fusimotor (gamma) drive to recorded afferent activity.
+type: software
+authors:
+  - family-names: Simha
+    given-names: Surabhi N.
+    affiliation: "Neuromechanics Lab, Emory University"
+repository-code: "https://github.com/SurabhiSimha/spindleModelTutorial"
+license: MIT
+version: "1.0"
+date-released: "2026-07-30"
+keywords:
+  - muscle spindle
+  - proprioception
+  - Ia afferent
+  - cross-bridge model
+  - fusimotor drive
+  - MATLAB
+
+preferred-citation:
+  type: article
+  title: >-
+    The mammalian muscle spindle as a tunable feedback controller in
+    locomotion
+  authors:
+    - family-names: Simha
+      given-names: Surabhi
+    - family-names: Sawicki
+      given-names: Gregory
+    - family-names: Cope
+      given-names: Timothy
+    - family-names: Ting
+      given-names: Lena
+  journal: bioRxiv
+  year: 2026
+  doi: 10.64898/2026.07.03.736206
