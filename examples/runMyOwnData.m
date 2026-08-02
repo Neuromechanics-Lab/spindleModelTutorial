@@ -90,9 +90,10 @@ saveUserResults(fullfile(tempdir, 'myResults'), out, 'forward');
 fprintf('Saved results to %s\n', tempdir);
 
 %% 6. OPTIMIZE instead: length + your firing -> gamma drive
-% Uncomment once you have a recorded Ia rate in `targetFiring`. This fits a
-% compact gamma drive (static level, burst magnitude, burst on/off) to your
-% recording. Each evaluation runs the full model, so expect ~1-2 minutes.
+% Uncomment once you have a recorded Ia rate in `targetFiring`. This fits 8
+% parameters to your recording: the gamma-static waveform (5 B-spline control
+% points), the gamma-dynamic burst magnitude, and the burst on/off times. Each
+% evaluation runs the full model, so expect ~2 minutes.
 %
 % THE COST IS MEAN-NORMALIZED: each trace is divided by its own mean before the
 % RMSE, so only SHAPE is compared - the same cost the manuscript minimises. That
@@ -107,10 +108,11 @@ fprintf('Saved results to %s\n', tempdir);
 %               'firing' pushes the model through integrateAndFire_v2 first -
 %               which saturates at 250 spikes/s at dt = 1 ms, so the objective
 %               goes flat wherever the model is pinned.
-%   solver    : 'fmincon' (default) is faster and converges well here.
-%               'patternsearch' is the manuscript's solver - derivative-free, so
-%               it copes better with the stepped cost you get in 'firing' mode.
-%               Worth trying if a fit looks stalled.
+%   solver    : 'fmincon' (default). 'patternsearch' is the manuscript's solver -
+%               derivative-free, so it copes better with the stepped cost you get
+%               in 'firing' mode, but it polls 2N points per iteration so it is
+%               slower here. On the built-in example the two land close together
+%               (0.064 vs 0.071); neither dominates, so try both if a fit matters.
 %   gammaStatic : how gamma-static is modelled.
 %               'bspline-free' (default) - 5 control points across the trial,
 %                 no periodicity assumed. Covers a constant (all points equal)

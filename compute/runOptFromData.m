@@ -21,12 +21,17 @@ function result = runOptFromData(d, opts)
 %                 the objective wherever the model is pinned.
 %   See docs/06_your_data.md.
 %
-%   To stay robust for ARBITRARY user protocols (not just periodic gait data), it
-%   fits a compact, general gamma parameterization rather than the periodic
-%   B-spline used on the manuscript's gait data:
-%       x = [ chain pCa (gamma-static level),
+%   WHAT IS FITTED (8 parameters by default):
+%       x = [ 5 gamma-static B-spline control points (pCa),
 %             bag burst pCa (gamma-dynamic magnitude),
 %             bag burst onset (s), bag burst offset (s) ]
+%   Burst TIMING is fitted here, unlike tutorialOptDemo (the Gamma optimization
+%   tab), which holds it fixed. opts.gammaStatic = 'constant' replaces the 5
+%   control points with a single level, giving a 4-parameter fit.
+%
+%   The gamma-static spline defaults to a NON-periodic one spread across the
+%   trial, so that arbitrary user protocols work; the manuscript's periodic
+%   construction is available as 'bspline-periodic' for genuinely cyclic data.
 %
 %   The fascicle length (from the user's length + alpha via the MTU, or their
 %   fascicle trace directly) does not depend on gamma, so it is computed ONCE and
@@ -34,12 +39,15 @@ function result = runOptFromData(d, opts)
 %
 %   opts (optional): .maxIter (default 20), .iterFcn (callback for live updates),
 %   .fitTarget ('receptor' | 'firing', default 'receptor'),
-%   .solver ('fmincon' | 'patternsearch', default 'fmincon').
+%   .solver ('fmincon' | 'patternsearch', default 'fmincon'),
+%   .gammaStatic ('bspline-free' | 'bspline-periodic' | 'constant', default
+%   'bspline-free'), .cyclePeriod (seconds; REQUIRED for 'bspline-periodic').
 %
 %   result fields: .t, .target, .fit0, .fitOpt (on the user grid, in whatever
-%   quantity was fitted), .fitTarget, .fitUnits,
-%   .x0, .xOpt, .names, .labels, .history, .fval0, .fvalOpt, and .gammaOpt
-%   (recovered gamma pCa traces for plotting), plus .outOpt (full model output).
+%   quantity was fitted), .fitTarget, .fitUnits, .solver, .gammaStatic,
+%   .cyclePeriod, .x0, .xOpt, .names, .labels, .history, .fval0, .fvalOpt, and
+%   .gammaOpt (recovered gamma pCa traces for plotting), plus .outOpt (full model
+%   output) and the .fascicle / .alphaAct traces the fit was driven with.
 
 if nargin < 2, opts = struct(); end
 t  = d.t(:)';
@@ -47,11 +55,12 @@ n  = d.n;
 maxIter   = getOpt(opts, 'maxIter', 20);
 iterFcn   = getOpt(opts, 'iterFcn', []);
 fitTarget = lower(getOpt(opts, 'fitTarget', 'receptor'));
-% Solver. fmincon is the DEFAULT here (fast, and adequate on this compact
-% 4-parameter fit). patternsearch is what the manuscript uses and is usually the
-% better search - derivative-free, so it copes with the stepped cost you get in
-% 'firing' mode - but it polls 2N points per iteration, so it is slower. Worth
-% switching to if a fit looks like it stalled.
+% Solver. fmincon is the DEFAULT here. patternsearch is what the manuscript uses
+% and is derivative-free, so it copes better with the stepped cost you get in
+% 'firing' mode - but it polls 2N points per iteration, so on this 8-parameter
+% fit it is slower per iteration. On the built-in example the two land close
+% together (see docs/06_your_data.md); neither dominates, so try both if a fit
+% matters, and switch if one looks like it stalled.
 % How gamma-STATIC is modelled. 'bspline-free' is the default: 5 control points
 % spread across the trial, spline-interpolated, no periodicity assumed - it can
 % express a constant (all points equal), a ramp (monotonic points) or any smooth

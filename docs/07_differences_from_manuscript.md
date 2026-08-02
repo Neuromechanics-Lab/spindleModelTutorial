@@ -53,6 +53,17 @@ smoothing).
 no phase transform and no smoothing. The Your-data tab offers a firing-rate mode
 (`fitTarget = 'firing'`) but still on the time grid.
 
+The mean-normalized cost makes `r` and firing rate interchangeable *in principle*
+— below the ceiling they are proportional, and normalization cancels the factor —
+but they are **not** interchangeable in practice, and the manuscript never made
+this substitution (its objective always runs `integrateAndFire_v2`). On the
+built-in example, whose truth is known, fitting `r` recovers the bag burst
+(pCa 7.54, 0.36–1.21 s vs a truth of 7.68, 0.35–1.15 s) at cost 0.064, while
+fitting firing collapses the burst to zero width at cost 0.225. The firing
+objective is about half as sensitive to bag pCa, because the model's firing
+saturates at the 250 spikes/s ceiling where the bag acts. So this difference
+favours the tutorial's default — but it is a real difference, not a wash.
+
 ### 4. Burst timing is fixed, with no outer grid
 **Manuscript:** an outer grid over the γ-dynamic on/off times — 7×7 coarse then
 5×5 refine, spanning 2–98% of the cycle, with a `patternsearch` fit of the 7
@@ -77,8 +88,8 @@ with the control points, and in the periodic variant the cycle is anchored at th
 start of the data.
 
 ### 5. Solver settings
-Both now use `patternsearch` (the tutorial exposes `opts.solver` and defaults to
-it; `'fmincon'` is available for comparison). The settings differ:
+The gamma-optimization demo uses `patternsearch`, as the manuscript does (the
+Your-data tab defaults to `fmincon` instead — see below). The settings differ:
 
 | | manuscript | tutorial |
 |---|---|---|
@@ -95,8 +106,9 @@ units, so an unscaled search takes effectively tiny steps in phase.
 ### 6. Horizon
 **Manuscript:** simulates 4.5 s, then trims the *cost window* to
 `sineStart + 2.7` cycles for speed.
-**Tutorial:** 1.6–1.9 s total (≈2–3 cycles), chosen to keep an interactive fit to
-a few minutes. The cost windows are comparable; the settling before it is not.
+**Tutorial:** 1.6 s for the gamma demo, 1.8 s for the Your-data example (≈2–3
+cycles), chosen to keep an interactive fit to a few minutes. The cost windows are
+comparable; the settling before it is not.
 
 ## What it costs in run time
 
@@ -109,18 +121,19 @@ from 12 to 25 iterations to compensate:
 |---|---|---|
 | Gamma optimization | 78 s (fmincon, 12 iter, serial) | **88 s** (patternsearch, 25, **parallel** — on by default) |
 | — same, serial | | 228 s |
-| Your data, optimize | 64 s (firing, fmincon) | **134 s** (receptor, fmincon — the new default) |
+| Your data, optimize | 64 s (firing, fmincon, 4 parameters) | **~125 s** (receptor, fmincon, 8 parameters — the new default) |
 
 Parallel is worth 2.6× on the gamma fit, because patternsearch's 2N poll points
 are independent; the first run pays a one-off ~45 s pool startup. Both fits are
 still far below the manuscript's own budget (200 iterations / 400 evaluations per
 node, at 245 nodes).
 
-The two tabs default to *different* solvers, deliberately. The gamma demo uses
-patternsearch (the manuscript's, and it reaches a ~4× lower cost here than
-fmincon); the Your-data tab uses fmincon, which converges better on its compact
-four-parameter fit. Both are switchable — `opts.solver`, or the **Solver**
-dropdown.
+The two tabs default to *different* solvers. The gamma demo uses patternsearch
+(the manuscript's, and it reaches a ~4× lower cost here than fmincon). The
+Your-data tab defaults to fmincon, where on the built-in 8-parameter fit the two
+land close together — 0.064 vs 0.071 on the same 20-iteration budget — with
+fmincon slightly ahead and slightly quicker. Neither dominates there; both are
+switchable via `opts.solver` or the **Solver** dropdown.
 
 ## What this costs you
 

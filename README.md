@@ -60,8 +60,11 @@ traces removes that.
 Because the cost is shape-only, **Your data** fits the model's *receptor potential*
 to your recorded *firing rate* by default: below the spike generator's ceiling the
 two are proportional, and that proportionality is what normalization cancels. It
-also keeps the 250 spikes/s ceiling out of the objective. A switch (**Optimize by
-fitting**, or `opts.fitTarget = 'firing'`) fits model firing instead if you want it.
+also keeps the 250 spikes/s ceiling out of the objective — which matters: on the
+built-in example the receptor fit recovers the known bag burst (pCa 7.54 and
+0.36–1.21 s, against a truth of 7.68 and 0.35–1.15 s) while the firing fit
+collapses that burst to zero width. A switch (**Optimize by fitting**, or
+`opts.fitTarget = 'firing'`) fits model firing instead if you want it.
 Details in [docs/06_your_data.md](docs/06_your_data.md).
 
 ## Why the app stops at the receptor potential
@@ -95,9 +98,12 @@ listed in
 
 - **MATLAB R2020a or later** (uses `uifigure` apps). Runs on macOS and Windows.
 - **Signal Processing Toolbox** — `butter`/`filtfilt`, used inside `sarc2spindle`.
-- **Optimization Toolbox** — `fmincon`, used by the optimization tab.
-- *Optional:* **Parallel Computing Toolbox** — the optimization tab's "Use
-  parallel" checkbox speeds the fit by parallelizing finite differences.
+- **Optimization Toolbox** — `fmincon`, the `Your data` tab's default solver.
+- *Optional:* **Global Optimization Toolbox** — `patternsearch`, the manuscript's
+  solver and the `Gamma optimization` tab's default. Without it that tab falls
+  back to `fmincon` automatically.
+- *Optional:* **Parallel Computing Toolbox** — the "Use parallel" checkbox (on by
+  default) spreads `patternsearch`'s poll points across workers, ~2.6× here.
 
 ## Vendored model code
 
@@ -173,11 +179,12 @@ time-series the **same length as `t`**:
 
 - **Forward** (`length + activations → receptor potential`): predicts fiber forces
   and the Ia receptor potential from your inputs.
-- **Optimize** (`length + your firing → gamma`): infers a compact gamma drive
-  (γ-static level, γ-dynamic burst magnitude + on/off timing) that reproduces
-  your firing. This uses a general parameterization suited to arbitrary
-  protocols, rather than the periodic B-spline used for gait data on the
-  `Gamma optimization` tab.
+- **Optimize** (`length + your firing → gamma`): infers the gamma drive that
+  reproduces your firing — 8 parameters: the γ-static waveform (5 B-spline
+  control points), the γ-dynamic burst magnitude, and the burst on/off **timing**,
+  which is fitted here rather than held fixed as on the `Gamma optimization` tab.
+  The spline defaults to a **non-periodic** one so arbitrary protocols work; the
+  manuscript's periodic construction is selectable for genuinely cyclic data.
 
 **Units — give `restingLength` and yours cancel.** Internally the model works in
 half-sarcomere nanometres (resting ≈ 1250 nm), which is nobody's recording unit.

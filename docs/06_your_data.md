@@ -58,17 +58,19 @@ save('myOptimize.mat', 't','mtuLength','alphaAct','targetFiring');
 
 ## What the optimize mode fits
 
-For arbitrary protocols (not just periodic gait data), the optimize mode fits a
-compact, general gamma parameterization:
+Eight parameters, by minimizing a **mean-normalized** RMSE against your recording
+(see below):
 
-- γ-static level (constant chain pCa),
-- γ-dynamic burst magnitude (bag pCa),
-- burst onset and offset (s),
+- the **γ-static** drive — 5 B-spline control points (chain pCa),
+- the **γ-dynamic** burst magnitude (bag pCa),
+- the burst **onset** and **offset** (s).
 
-by minimizing a **mean-normalized** RMSE against your recording — see below —
-between the model's response and your
-target. This differs from the `Gamma optimization` tab, which fits the periodic
-5-control-point B-spline used for the manuscript's gait data.
+Burst timing is fitted here. That is the one substantive difference from the
+`Gamma optimization` tab, which holds timing fixed and fits only the magnitudes.
+The γ-static spline also defaults to a **non-periodic** one, so that arbitrary
+protocols work; the manuscript's periodic construction is available — see
+[How γ-static is modelled](#how-γ-static-is-modelled) for all three modes and
+their parameter counts.
 
 ## Doing it from code
 
@@ -113,11 +115,27 @@ fitted directly to your recorded **firing rate**, despite the units differing.
 Below the spike generator's ceiling the two are proportional — `rate = r/threshold`
 — and a proportional factor is exactly what mean-normalization removes.
 
-Simha et al. find the normalized fit gives similar answers either way, and fitting
-`r` keeps the spike generator's limits (a 250 spikes/s ceiling at `dt = 1 ms`, and
-rate quantization to `1/(k*dt)`) out of the objective entirely. Where the model's
-firing is pinned at the ceiling, the objective is flat and the fit has nothing to
-work with; `r` is never pinned.
+Fitting `r` also keeps the spike generator's limits (a 250 spikes/s ceiling at
+`dt = 1 ms`, and rate quantization to `1/(k*dt)`) out of the objective entirely.
+Where the model's firing is pinned at the ceiling the objective goes flat and the
+fit has nothing to work with; `r` is never pinned.
+
+That is not a cosmetic difference. On the built-in example, whose true γ-dynamic
+burst is known — bag pCa 7.68 from 0.35 to 1.15 s — the two modes disagree
+sharply, on the same 20-iteration budget:
+
+| | final cost | recovered bag burst | γ-static trace |
+|---|---|---|---|
+| `'receptor'` (default) | **0.064** | pCa 7.54, 0.36 → 1.21 s — close on all three | — |
+| `'firing'` | 0.225 | pCa 5.99, 0.50 → 0.50 s — **collapsed to zero width** | corr 0.85 with the above |
+
+The recovered γ-**static** waveforms agree reasonably (correlation 0.85), but the
+γ-**dynamic** ones are unrelated (0.02): the firing fit effectively switches the
+bag off. Perturbing only the bag pCa about the receptor solution shows why — the
+firing objective moves 0.09 across the bag's whole range where the receptor
+objective moves 0.20, so it is roughly half as sensitive to the parameter, and
+flat objectives do not get optimized. Prefer the default unless you specifically
+want the generator in the loop.
 
 If you want the spike generator in the loop anyway, switch **Optimize by fitting**
 to *firing rate* in the app, or pass `opts.fitTarget = 'firing'` in code. The cost
@@ -125,7 +143,7 @@ is mean-normalized in both cases.
 
 ### How γ-static is modelled
 
-`opts.gammaStatic` (and the app's **γ-static model** dropdown):
+`opts.gammaStatic` (and the app's **gamma-static model** dropdown):
 
 | mode | parameters | use it when |
 |---|---|---|
@@ -189,3 +207,23 @@ With 20 iterations, fitting the receptor potential:
 Both splines beat the single-level fit, which is the example doing its job. Note
 `targetFiring` here is rectified-linear in `r` rather than the toolbox spike
 generator's output — see the comment in `compute/exampleUserData.m` for why.
+
+## What gets saved
+
+**Save results…** (or `saveUserResults(base, res, 'optimize')`) writes a `.mat`
+and a `.csv`. The `.mat` records how the fit was configured, because without it
+the file is ambiguous:
+
+| field | why it matters |
+|---|---|
+| `fitTarget`, `fitUnits` | `fitOptimised` is a **receptor potential** in the default `'receptor'` mode and a **firing rate** in `'firing'` mode |
+| `gammaStatic`, `cyclePeriod` | `paramNames` has 8 entries for the B-spline models, 4 for `'constant'` |
+| `solver` | which optimizer produced it |
+
+The CSV names its fit columns to match: `fitOptimised_r_au` for a receptor fit,
+`fitOptimised_sps` for a firing fit. `targetFiring_sps` is always your recording,
+in spikes/s.
+
+Both fit traces are stored in **raw** model units, not mean-normalized. The app
+plots them normalized, because that is what the cost actually minimized — showing
+raw traces overlaid would imply an absolute match that was never fitted.

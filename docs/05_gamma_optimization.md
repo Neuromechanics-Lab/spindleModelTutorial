@@ -79,9 +79,11 @@ identifiability.
   manuscript handles with the outer grid / multi-start.
 - **Phase** moves little in a short run; a longer simulation horizon (more gait
   cycles) gives it more to work with.
-- Each objective evaluation runs the full model, so a fit takes ~1–2 minutes.
-  Ticking **Use parallel** spreads the finite-difference gradient across workers
-  (needs the Parallel Computing Toolbox).
+- Each objective evaluation runs the full model, so a fit takes a couple of
+  minutes. Ticking **Use parallel** (on by default) spreads `patternsearch`'s 2N
+  poll points across workers — worth ~2.6× here, 228 s down to 88 s, after a
+  one-off ~45 s pool startup. Needs the Parallel Computing Toolbox; timings are
+  tabulated in [07_differences_from_manuscript.md](07_differences_from_manuscript.md).
 
 ## Mapping back to the real project
 
@@ -89,6 +91,6 @@ identifiability.
 |----------|--------------------------|
 | `tutorialForwardSim` / `runExtrafusalMTU` | `runSpindleSimForGammaFwdSim`, `getExtrafusalConstMTU` |
 | `tutorialOptDemo` (calls the real B-spline sim) | `runSpindleSimForOpt_Bspline_5cp`, `getIntrafusal_pCa_Bspline_5cp` |
-| objective (component-normalized RMSE) | `objFuncWithFixedTiming_Bspline_5cp_normSmooth` |
-| `fmincon` loop | `hybridOptimizationGammaDrive_Bspline_5cp_grid` |
+| objective (mean-normalized RMSE, `meanNormRMSE`) | `objFuncWithFixedTiming_Bspline_5cp_normSmooth` |
+| `patternsearch` loop (single pass, timing fixed) | `hybridOptimizationGammaDrive_Bspline_5cp_grid` (245 fits over a timing grid) |
 | simulated target | experimental Ia data (Taylor et al.) |
