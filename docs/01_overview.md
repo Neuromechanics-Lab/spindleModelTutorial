@@ -7,9 +7,10 @@ starting from the molecular cross-bridges inside the spindle's own tiny muscle
 fibers.
 
 The model's output is the Ia **receptor potential**. In the animal that receptor
-potential is converted into the afferent's **firing rate**; this tutorial stops
-at the receptor potential and does not simulate that conversion. See
-[4. The receptor potential](04_receptor_potential.md) for why.
+potential is converted into the afferent's **firing rate**; here that conversion
+is a separate modelling step. The guided walkthrough runs the toolbox spike
+generator once to show what it does, and where the time step limits it. See
+[4. The receptor potential](04_receptor_potential.md).
 
 ## The pipeline
 

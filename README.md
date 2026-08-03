@@ -98,7 +98,7 @@ The written narrative mirrors the in-app text and is the place for the details:
 | [01_overview.md](docs/01_overview.md) | What the model is and the full pipeline |
 | [02_fibers_and_forces.md](docs/02_fibers_and_forces.md) | Bag and chain fibers, and where force comes from |
 | [03_crossbridge_distribution.md](docs/03_crossbridge_distribution.md) | The cross-bridge population and how it evolves |
-| [04_receptor_potential.md](docs/04_receptor_potential.md) | Force + yank → `r`, and **why the app stops at the receptor potential** |
+| [04_receptor_potential.md](docs/04_receptor_potential.md) | Force + yank → `r`, and **how `r` becomes spikes** |
 | [05_gamma_optimization.md](docs/05_gamma_optimization.md) | Recovering gamma drive, and **how the fits are scored** |
 | [06_your_data.md](docs/06_your_data.md) | Running the model on your own recordings |
 | [07_differences_from_manuscript.md](docs/07_differences_from_manuscript.md) | Every known difference from the published workflow, and what it costs |
