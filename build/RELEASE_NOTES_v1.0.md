@@ -66,6 +66,15 @@ How this tutorial's workflow differs from the published pipeline is listed in
 
 ## Citation
 
+**This software** is archived on Zenodo:
+
+- this release (v1.0): [10.5281/zenodo.21774147](https://doi.org/10.5281/zenodo.21774147)
+- all versions (resolves to the latest): [10.5281/zenodo.21774146](https://doi.org/10.5281/zenodo.21774146)
+
+Cite the *all versions* DOI unless you need to pin the exact version you ran.
+
+**The model** it implements:
+
 - Simha SN, Ting LH (2024). Intrafusal cross-bridge dynamics shape
   history-dependent muscle spindle responses to stretch. *Experimental
   Physiology* 109(1):112–124. doi:10.1113/EP090767
