@@ -36,13 +36,6 @@ is why the two platforms list different versions.
   γ drive, fiber kinetics, transduction gains) and watch every signal update,
   with a scrubber to step the cross-bridge distribution through time.
 
-The model's output here is the Ia **receptor potential**. Turning it into spikes
-is a separate step, left to `examples/spikesFromReceptorPotential.m` — the
-integrate-and-fire the toolbox ships is refractory-limited to 250 spikes/s at
-`dt = 1 ms`, which any realistic γ drive saturates, so plotting it would show
-the time step rather than the spindle. See
-[docs/04](https://github.com/SurabhiSimha/spindleModelTutorial/blob/main/docs/04_receptor_potential.md).
-
 ## For MATLAB users
 
 If you have MATLAB you don't need the installers above — run it from source and
@@ -68,9 +61,7 @@ launchSpindleGUI          % pick Interactive Tutorial (Learn) or Analysis Toolki
 **Optimization** Toolboxes; the Analysis Toolkit also uses **Global
 Optimization** (for `patternsearch`) and benefits from **Parallel Computing**.
 
-Full details in the
-[README](https://github.com/SurabhiSimha/spindleModelTutorial#readme). How this
-tutorial's workflow differs from the published pipeline is listed in
+How this tutorial's workflow differs from the published pipeline is listed in
 [docs/07](https://github.com/SurabhiSimha/spindleModelTutorial/blob/main/docs/07_differences_from_manuscript.md).
 
 ## Citation
