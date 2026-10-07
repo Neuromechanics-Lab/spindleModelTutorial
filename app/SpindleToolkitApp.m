@@ -174,7 +174,8 @@ classdef SpindleToolkitApp < SpindleAppBase
             obj.optStatus.Layout.Row = r; obj.optStatus.Layout.Column = [1 2]; r = r + 1;
 
             note = uilabel(cg, 'Text', ['The target is self-generated, so the true drive is ' ...
-                'known - drawn dashed on the left, and redrawn as you change these settings. ' ...
+                'known - drawn dashed on the left (dots mark the B-spline control points), and ' ...
+                'redrawn as you change these settings. ' ...
                 'A fit takes ~1 min (burst) or ~2 min (B-spline) with the default fmincon.' ...
                 newline newline ...
                 'The cost is the manuscript''s: the receptor potential ABOVE its no-drive ' ...
@@ -235,10 +236,15 @@ classdef SpindleToolkitApp < SpindleAppBase
             % The scored window's edges, as two dotted verticals in one line.
             obj.optFitLines.win  = plot(ax, NaN, NaN, ':', 'Color', obj.S.muted, 'LineWidth', 1.2);
             hold(ax, 'off');
-            title(ax, 'Target Ia vs model fit  (press Run optimization)');
+            % No legends on this tab: in these small plots 'best' put them over
+            % the traces (worse on Windows, where text renders larger), and an
+            % 'outside' legend is clipped because the axes fills its panel. Each
+            % title carries a colour key instead (see keyTitle). The CP markers
+            % and the dotted scored-window edges are explained in the note.
+            obj.keyTitle(ax, 'Target Ia vs model fit  (press Run optimization)', ...
+                {'target (truth)', obj.S.total; 'initial guess (dashed)', obj.S.bag; ...
+                 'optimized fit', obj.S.green});
             xlabel(ax, 'time (s)'); ylabel(ax, 'r above baseline (a.u.)');
-            legend(ax, {'target (truth)','initial guess','optimized fit','scored window'}, ...
-                'Location', 'best', 'FontSize', 8);
 
             % Same trick for the two drive panels: build every line ONCE, then
             % only push data into it. The target lines are refreshed on every
@@ -254,10 +260,9 @@ classdef SpindleToolkitApp < SpindleAppBase
             obj.optGammaLines.sOptCP = plot(ax, NaN, NaN, 'o', 'MarkerSize', 7, ...
                 'LineStyle', 'none', 'Color', s.chain, 'MarkerFaceColor', s.chain);
             hold(ax, 'off');
-            title(ax, 'chain (\gamma-static): target vs recovered');
+            obj.keyTitle(ax, 'chain (\gamma-static)', ...
+                {'target (dashed)', grey; 'recovered', s.chain});
             xlabel(ax, 'time (s)'); ylabel(ax, 'activation (%)'); ylim(ax, [0 100]);
-            legend(ax, {'target','target CP','recovered','recovered CP'}, ...
-                'Location', 'best', 'FontSize', 8);
 
             ax = obj.optAxGammaD;
             obj.optGammaLines.dTrue = plot(ax, NaN, NaN, '--', 'Color', grey, 'LineWidth', 1.5);
@@ -268,10 +273,9 @@ classdef SpindleToolkitApp < SpindleAppBase
             obj.optGammaLines.dOptCP = plot(ax, NaN, NaN, 'o', 'MarkerSize', 7, ...
                 'LineStyle', 'none', 'Color', s.bag, 'MarkerFaceColor', s.bag);
             hold(ax, 'off');
-            title(ax, 'bag (\gamma-dynamic): target vs recovered');
+            obj.keyTitle(ax, 'bag (\gamma-dynamic)', ...
+                {'target (dashed)', grey; 'recovered', s.bag});
             xlabel(ax, 'time (s)'); ylabel(ax, 'activation (%)'); ylim(ax, [0 100]);
-            legend(ax, {'target','target CP','recovered','recovered CP'}, ...
-                'Location', 'best', 'FontSize', 8);
 
             obj.beautify(ppanel);
             obj.onGammaDynamicMode();   % sets the description, then previews
@@ -302,6 +306,14 @@ classdef SpindleToolkitApp < SpindleAppBase
             catch ME
                 obj.optStatus.Text = ['Could not preview the target drive: ' ME.message];
             end
+        end
+
+        function keyTitle(~, ax, txt, items)
+            % Title plus a second line naming each trace in its own colour - a
+            % legend that can never sit on top of the data. items: {label, rgb}.
+            key = cellfun(@(lab, c) sprintf('\\color[rgb]{%.2f,%.2f,%.2f}%s', c, lab), ...
+                items(:,1), items(:,2), 'UniformOutput', false);
+            title(ax, {txt, strjoin(key', '    ')});
         end
 
         function opts = trueDriveOpts(obj, ac)
@@ -430,7 +442,9 @@ classdef SpindleToolkitApp < SpindleAppBase
             set(obj.optFitLines.target, 'XData', res.t, 'YData', res.target);
             set(obj.optFitLines.init,   'XData', res.t, 'YData', res.fit0);
             set(obj.optFitLines.opt,    'XData', res.t, 'YData', res.fitOpt);
-            title(ax, 'Target Ia vs model fit');
+            obj.keyTitle(ax, 'Target Ia vs model fit', ...
+                {'target (truth)', obj.S.total; 'initial guess (dashed)', obj.S.bag; ...
+                 'optimized fit', obj.S.green});
             obj.padY(ax, [res.target(:); res.fit0(:); res.fitOpt(:)]);
             xlim(ax, [res.t(1) res.t(end)]);
             yl = ylim(ax); w = res.scoreWindow;
