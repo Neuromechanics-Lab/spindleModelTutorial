@@ -54,6 +54,7 @@ toolboxFiles = {
 optFiles = {
     fullfile('functions', 'runSpindleSimForOpt_Bspline_5cp.m')
     fullfile('functions', 'getIntrafusal_pCa_Bspline_5cp.m')
+    fullfile('functions', 'syncIntrafusalStartLength.m')
     };
 
 vendorRoot = fullfile(root, 'vendor');

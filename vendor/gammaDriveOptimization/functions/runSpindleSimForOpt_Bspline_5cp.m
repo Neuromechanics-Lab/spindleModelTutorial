@@ -16,6 +16,9 @@ function [r_t, hsL, mL, r, rs, rd, hsB, dataB, hsC, dataC] = runSpindleSimForOpt
 [sarcC, sarcB] = getIntrafusal_pCa_Bspline_5cp(t, sineStart, MTUfreq, act_freq, sarcC, sarcB, gDynOnPct, gDynOffPct, sarcC_control_points, sarcC_phaseShift_s, sarcC_pCaToActGridded, sarcC_ActToPcaGridded);
 
 % Run intrafusal fiber simulation
+% Start the intrafusal fibres at the extrafusal length (see function header)
+[sarcB, sarcC] = syncIntrafusalStartLength(sarcB, sarcC, mtData);
+
 delta_cdlI = [0 diff(mtData.hs_length)];
 [hsB, dataB, hsC, dataC] = sarcSimDriverIntrafusal20250627(t, delta_cdlI(1, :), sarcB, sarcC);
 

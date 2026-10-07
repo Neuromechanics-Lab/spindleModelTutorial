@@ -6,9 +6,9 @@ commits below. Do not edit them here - edit the source repo and re-run
 tools/refreshVendor.m.
 
   matlabMuscleSpindleModellingTools : ba39645
-  gammaDriveOptimization            : 257a882
+  gammaDriveOptimization            : 1107951
 
-Files: 14
+Files: 15
 
 Licence
 -------
