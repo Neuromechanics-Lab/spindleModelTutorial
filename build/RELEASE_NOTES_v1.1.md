@@ -8,7 +8,7 @@ Interactive companion to the biophysical muscle spindle model of
 | File | Platform | Runtime it fetches |
 |------|----------|--------------------|
 | `SpindleTutorialInstaller_mac.zip` | macOS, **Apple silicon** (M1 or newer, 2020+) | MATLAB Runtime **R2026b** |
-| `SpindleTutorialInstaller_win.zip` | Windows 10/11 (64-bit) | MATLAB Runtime **TODO** |
+| `SpindleTutorialInstaller_win.zip` | Windows 10/11 (64-bit) | MATLAB Runtime **R2026a** |
 
 **Older Intel Mac?** (Apple menu → About This Mac shows "Intel".) This version
 won't run on it — use the
