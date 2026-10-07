@@ -34,6 +34,10 @@ instead. It has the same tutorial content.
 
 - **Readable in dark mode.** On computers set to dark mode, some text in the
   Windows app was unreadable. The app now always uses its light theme.
+- **Window fits the screen.** On Windows laptops the window could open with
+  its title bar above the top of the screen. It now sizes itself to fit.
+- **No extra window on Windows.** A command window no longer stays open behind
+  the app.
 - **Faster on Apple silicon Macs.** The Mac app now runs natively instead of
   through Rosetta.
 - **Faster first walkthrough.** The app warms up the model while you read the
