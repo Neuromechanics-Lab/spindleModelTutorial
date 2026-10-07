@@ -61,15 +61,19 @@ p.gamma.chainOn        = 0.05;        % s, chain (gamma-static) onset. Kept abov
                                       % so a run starts from zero activation, the
                                       % convention the toolbox follows by holding
                                       % activation at zero for its first 10 steps.
-p.gamma.chainLevel_pct = 50;          % % activation: level, or MEAN of the sine
+% Levels are LOW on purpose, like the manuscript's (gamma-dynamic 6%): with the
+% regenerated activation curve (ActCurveDate 20260814) the bag is strong, and at
+% 20% chain / 6% bag the predicted firing stays below the spike generator's
+% 250 spikes/s ceiling throughout the default runs (peak 200), where 50% / 60%
+% sat on it for the whole run. Larger drives are a slider away in the Playground.
+p.gamma.chainLevel_pct = 20;          % % activation: level, or MEAN of the sine
 p.gamma.chainAmp_pct   = 20;          % % activation, sine amplitude
 p.gamma.chain_freq     = 1.0;         % Hz, sine frequency
 p.gamma.chainPhase_s   = 0.0;         % s, sine phase relative to chainOn
 % Switching gamma on is a STEP, and the bag's yank response to that step grows
-% very fast with level (onset transient in r: 3.2 at 40%, 5.6 at 60%, 19 at 90%).
-% Above ~60% the switch-on artefact dwarfs the stretch response it is meant to
-% set up, so 60% keeps the stretch clearly dominant (~3x the onset transient).
-p.gamma.bagBurst_pct   = 60;          % % activation during the gamma-dynamic burst
+% very fast with level, so at high levels the switch-on artefact can dwarf the
+% stretch response it is meant to set up. At 6% the stretch response dominates.
+p.gamma.bagBurst_pct   = 6;           % % activation during the gamma-dynamic burst
 p.gamma.bagOn          = 0.05;        % s, burst onset (see chainOn)
 p.gamma.bagOff         = 1.8;         % s, burst offset
 

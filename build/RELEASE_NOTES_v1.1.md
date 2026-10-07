@@ -32,6 +32,19 @@ instead. It has the same tutorial content.
 
 ## What's new in v1.1
 
+### Model updates (from the manuscript code)
+
+- **Updated bag activation curve.** The curve that converts % activation to the
+  model's pCa has been regenerated with the current model. The old bag curve
+  predated a change to the bag fiber's kinetics and drove the bag up to ~0.7 pCa
+  units harder than intended for the same % activation.
+- **Lower default gamma drive** (20% gamma-static, 6% gamma-dynamic, in line
+  with the manuscript). The predicted firing now stays below the spike
+  generator's ceiling in the walkthrough and Playground; stronger drive is still
+  a slider away.
+
+### App fixes
+
 - **Readable in dark mode.** On computers set to dark mode, some text in the
   Windows app was unreadable. The app now always uses its light theme.
 - **Window fits the screen.** On Windows laptops the window could open with
@@ -46,6 +59,11 @@ instead. It has the same tutorial content.
   breaking mid-sentence.
 
 ## For MATLAB users
+
+**Analysis Toolkit changes in v1.1** (MATLAB only): both fits now use the
+manuscript's receptor-potential cost (the receptor potential above its no-drive
+baseline, mean-normalized), and gamma-dynamic can be modelled as a B-spline as
+well as an on/off burst, as in the manuscript's Figure 1D.
 
 If you have MATLAB you don't need the installers above — run it from source and
 you also get the **Analysis Toolkit**: recover γ drive from a simulated Ia, or

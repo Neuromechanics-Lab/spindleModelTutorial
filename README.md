@@ -43,7 +43,7 @@ Toolkit** window.
   solver and the `Gamma optimization` tab's default. Without it that tab falls
   back to `fmincon` automatically.
 - *Optional:* **Parallel Computing Toolbox** — the "Use parallel" checkbox
-  spreads `patternsearch`'s poll points across workers, ~2.6× here.
+  spreads `patternsearch`'s poll points across workers, 1.5–2.3× here.
 
 ## The two windows
 
@@ -110,7 +110,7 @@ Maintainer tasks — building the standalone apps, re-syncing `vendor/` — are 
 
 This repository is **self-sufficient**: the model files it depends on are
 snapshotted under [`vendor/`](vendor/) — 12 from
-`matlabMuscleSpindleModellingTools` and 2 from `gammaDriveOptimization`, at the
+`matlabMuscleSpindleModellingTools` and 5 from `gammaDriveOptimization`, at the
 commits recorded in `vendor/VENDOR_INFO.txt`.
 
 If you have those repositories checked out as siblings they are used in

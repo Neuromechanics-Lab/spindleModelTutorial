@@ -25,8 +25,8 @@ p.gamma.chainPhase_s   = 0;
 % gamma-DYNAMIC kept low on purpose. The bag drives r far harder than the chain
 % does, and at the 92% this example used to run, rms(r_d) was 5.5x rms(r_s) -
 % the chain's contribution was swamped, so there was little for a fit to work
-% with. At 10% the ratio is 2.2x: the bag still leads, as it should, but both
-% components are visible in the trace.
+% with. At 10% the ratio is 1.2x (with the 20260814 activation curve): the
+% bag still leads, as it should, but both components are visible in the trace.
 p.gamma.bagBurst_pct   = 10;
 p.gamma.bagOn = 0.35; p.gamma.bagOff = 1.15;
 ref = tutorialForwardSim(p);
@@ -39,9 +39,9 @@ d.chainAct  = ref.actC(:)';        % 0..1  (so a forward run is possible)
 d.bagAct    = ref.actB(:)';        % 0..1
 % A firing rate to optimize against. It is NOT produced by pushing this run
 % through integrateAndFire_v2: that generator clips at 1/(4*dt) = 250 spikes/s,
-% and at any interesting drive level the result is pinned there for most of the
-% trace (65-90% of samples), which is an artefact of the time step rather than
-% anything a real afferent does. Fitting against a clipped target would also
+% and at stronger drive levels the result is pinned there for most of the
+% trace (65-90% of samples; 9% even at this example's low drive), an artefact
+% of the time step rather than anything a real afferent does. Fitting against a clipped target would also
 % unfairly handicap the default 'receptor' mode, which compares an UNclipped r.
 %
 % Instead the target is what an afferent with its own gain and threshold would

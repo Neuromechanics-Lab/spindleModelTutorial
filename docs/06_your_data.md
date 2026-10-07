@@ -58,8 +58,8 @@ save('myOptimize.mat', 't','mtuLength','alphaAct','targetFiring');
 
 ## What the optimize mode fits
 
-Eight parameters, by minimizing a **mean-normalized** RMSE against your recording
-(see below):
+Eight parameters by default, by minimizing a **mean-normalized** RMSE against
+your recording (see below):
 
 - the **γ-static** drive — 5 B-spline control points (chain pCa),
 - the **γ-dynamic** burst magnitude (bag pCa),
@@ -70,7 +70,8 @@ Burst timing is fitted here. That is the one substantive difference from the
 The γ-static spline also defaults to a **non-periodic** one, so that arbitrary
 protocols work; the manuscript's periodic construction is available — see
 [How γ-static is modelled](#how-γ-static-is-modelled) for all three modes and
-their parameter counts.
+their parameter counts. γ-dynamic can be a B-spline too — see
+[How γ-dynamic is modelled](#how-γ-dynamic-is-modelled).
 
 ## Doing it from code
 
@@ -91,18 +92,31 @@ res = runOptFromData(d2);              % optimize: -> res.xOpt, res.gammaOpt, ..
 
 ## What the optimizer actually compares
 
-The cost is **mean-normalized**: each trace is divided by its own mean before the
-RMSE, so only *shape* is compared.
+In the default receptor mode the model's `r` is first taken **above its no-drive
+baseline** and floored at 0. Then the cost is **mean-normalized**: each trace is
+divided by its own mean before the RMSE, so only *shape* is compared.
 
 ```matlab
+model = max(r - mean(r(1:10)), 0);       % the first 10 samples have no drive
 mN = model / mean(model);   dN = data / mean(data);
 cost = sqrt(mean((mN - dN).^2));
 ```
 
 This is the cost the manuscript minimizes
-(`objFuncWithFixedTiming_Bspline_5cp_normSmooth.m` in `gammaDriveOptimization`),
-which scales it by 1/100 before returning — a constant, so the minimum is in the
-same place, but cost values here are 100× the ones its scripts print.
+(`objFuncWithFixedTiming_Bspline_5cp_rPotential.m` in `gammaDriveOptimization`;
+here `compute/rPotentialCost.m`), which scales it by 1/100 before returning — a
+constant, so the minimum is in the same place, but cost values here are 100× the
+ones its scripts print. Unlike the manuscript, which scores gait phase 0–1.5, the
+tab scores the whole trial, after smoothing both traces with a ~50 ms moving
+mean.
+
+The baseline is there because a mean-normalized comparison only works if both
+traces share a zero. Your firing rate has one (silent). `r` does not — with no
+drive at all it sits at a passive level — and left in, that pedestal squashes the
+model's normalized swing toward the target's and lowers the cost for the wrong
+reason. Below baseline the afferent would be silent, hence the floor. In
+`'firing'` mode the model's firing already has a true zero, so nothing is
+subtracted.
 
 ### Why the default fits the receptor potential
 
@@ -116,22 +130,24 @@ Fitting `r` also keeps the spike generator's limits (a 250 spikes/s ceiling at
 Where the model's firing is pinned at the ceiling the objective goes flat and the
 fit has nothing to work with; `r` is never pinned.
 
-That is not a cosmetic difference. On the built-in example, whose true γ-dynamic
-burst is known — bag pCa 7.68 from 0.35 to 1.15 s — the two modes disagree
-sharply, on the same 20-iteration budget:
+On the built-in example, whose true γ-dynamic burst is known — bag pCa 8.39
+(10% activation) from 0.35 to 1.15 s — the two modes land in different places,
+on the same 20-iteration budget:
 
 | | final cost | recovered bag burst | γ-static trace |
 |---|---|---|---|
-| `'receptor'` (default) | **0.064** | pCa 7.54, 0.36 → 1.21 s — close on all three | — |
-| `'firing'` | 0.225 | pCa 5.99, 0.50 → 0.50 s — **collapsed to zero width** | corr 0.85 with the above |
+| `'receptor'` (default) | **0.043** | pCa 8.63, 0.14 → 1.77 s — level close, burst too long | corr 0.67 with the truth |
+| `'firing'` | 0.189 | pCa 6.28, 0.42 → 1.80 s — **~2 pCa too strong**, burst too long | corr 0.16 with the above |
 
-The recovered γ-**static** waveforms agree reasonably (correlation 0.85), but the
-γ-**dynamic** ones are unrelated (0.02): the firing fit effectively switches the
-bag off. Perturbing only the bag pCa about the receptor solution shows why — the
-firing objective moves 0.09 across the bag's whole range where the receptor
-objective moves 0.20, so it is roughly half as sensitive to the parameter, and
-flat objectives do not get optimized. Prefer the default unless you specifically
-want the generator in the loop.
+Neither mode recovers the burst *timing* well on this budget: the bag is driven
+low, so its burst is a small part of the trace. The receptor fit gets the bag
+**level** about right; the firing fit overdrives the bag by about 2 pCa, and its
+γ-static waveform barely resembles the receptor fit's (correlation 0.16).
+Perturbing only the bag pCa about the receptor solution shows part of why — the
+firing objective moves 0.14 across the bag's whole range where the receptor
+objective moves 0.30, so it is roughly half as sensitive to the parameter, and
+flat objectives do not get optimized well. Prefer the default unless you
+specifically want the generator in the loop.
 
 If you want the spike generator in the loop anyway, switch **Optimize by fitting**
 to *firing rate* in the app, or pass `opts.fitTarget = 'firing'` in code. The cost
@@ -156,21 +172,39 @@ needs a cycle period, so it is wrong for a ramp-and-hold or a step.
 The tutorial will not infer the cycle period from your data — you have to state
 it, in the app's **Cycle period (s)** box or `opts.cyclePeriod`.
 
+### How γ-dynamic is modelled
+
+`opts.gammaDynamic` (and the app's **gamma-dynamic model** dropdown):
+
+| mode | γ-dynamic parameters | what it is |
+|---|---|---|
+| `'pulse'` **(default)** | 3 | a rectangular burst: bag pCa, onset (s), offset (s) |
+| `'bspline-free'` | 5 | 5 control points across the trial, as for γ-static |
+| `'bspline-periodic'` | 5 | one cycle tiled — the manuscript's Figure 1D form. Needs `opts.cyclePeriod` |
+
+The B-spline modes replace the burst's 3 parameters with 5 control points, so a
+fit with a B-spline γ-static has 10 parameters in all. They can express a
+gradual or repeated bag drive that an on/off burst cannot, at the cost of two
+more parameters. The B-spline starts low and flat (pCa 8.0 at every point),
+because the bag is strong and a little γ-dynamic goes a long way.
+
 ### Solver
 
 `opts.solver` (and the app's **Solver** dropdown) chooses between:
 
 - **`'fmincon'`** (default). On the built-in example, 20 iterations: cost
-  0.333 → 0.064 in ~124 s.
+  0.538 → 0.043 in ~62 s.
 - **`'patternsearch'`** — what the manuscript uses. Derivative-free, so it copes
   better with the stepped cost you get in `'firing'` mode, and worth trying if a
-  fit looks like it stalled. Same budget: 0.333 → 0.071 in ~136 s.
+  fit looks like it stalled. Same budget: 0.538 → 0.084 in ~72 s.
 
-The two are close here; neither dominates. Try both if a fit matters.
+fmincon is ahead here on both counts, but the two are within a factor of two.
+Try both if a fit matters.
 
 > The built-in example's `targetFiring` is generated as a rectified-linear function
 > of `r` (`rate = a*(r - threshold)`), not by running the toolbox spike generator —
-> which would clip 65–90% of the trace at 250 spikes/s and make the example
+> which clips at 250 spikes/s wherever the drive is strong (9% of this example's
+> trace at its low drive, most of it at higher drive), and a clipped target is
 > unrepresentative of a real recording. See `compute/exampleUserData.m`.
 
 
@@ -189,18 +223,21 @@ Two deliberate choices. γ-static **varies in time**, so the B-spline modes have
 shape to recover — with a constant truth every γ-static mode scores the same and
 the spline looks pointless. And the bag is kept **low**: it drives `r` far harder
 than the chain does, and at a high bag level `rms(r_d)` is several times
-`rms(r_s)`, so the chain's contribution is swamped. At 10% the ratio is ~2.2, and
+`rms(r_s)`, so the chain's contribution is swamped. At 10% the ratio is ~1.2, and
 both components are visible in the trace.
 
 With 20 iterations, fitting the receptor potential:
 
 | γ-static model | parameters | cost |
 |---|---|---|
-| `bspline-periodic` (cycle 1.67 s) | 8 | **0.057** |
-| `bspline-free` | 8 | **0.064** |
-| `constant` | 4 | 0.082 |
+| `bspline-free` | 8 | **0.043** |
+| `bspline-periodic` (cycle 1.67 s) | 8 | **0.047** |
+| `constant` | 4 | 0.122 |
 
-Both splines beat the single-level fit, which is the example doing its job. Note
+Both splines beat the single-level fit, which is the example doing its job. With
+a B-spline γ-dynamic as well (`gammaDynamic = 'bspline-free'`, 10 parameters)
+the same budget reaches 0.082 — two more parameters to fit, and this example's
+true γ-dynamic is a burst, which a burst describes exactly. Note
 `targetFiring` here is rectified-linear in `r` rather than the toolbox spike
 generator's output — see the comment in `compute/exampleUserData.m` for why.
 
@@ -213,7 +250,7 @@ the file is ambiguous:
 | field | why it matters |
 |---|---|
 | `fitTarget`, `fitUnits` | `fitOptimised` is a **receptor potential** in the default `'receptor'` mode and a **firing rate** in `'firing'` mode |
-| `gammaStatic`, `cyclePeriod` | `paramNames` has 8 entries for the B-spline models, 4 for `'constant'` |
+| `gammaStatic`, `gammaDynamic`, `cyclePeriod` | `paramNames` has 8 entries for the B-spline γ-static with the burst, 4 for `'constant'`, and 2 more when γ-dynamic is a B-spline |
 | `solver` | which optimizer produced it |
 
 The CSV names its fit columns to match: `fitOptimised_r_au` for a receptor fit,

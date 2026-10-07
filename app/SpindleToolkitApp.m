@@ -30,6 +30,7 @@ classdef SpindleToolkitApp < SpindleAppBase
         udFitTarget                % 'what to fit' dropdown
         udSolver                   % solver dropdown
         udGammaStatic              % gamma-static model dropdown
+        udGammaDynamic             % gamma-dynamic model dropdown
         udCycle                    % cycle period (periodic mode only)
         udSaveBtn
         udPlotPanel
@@ -72,19 +73,28 @@ classdef SpindleToolkitApp < SpindleAppBase
             % pushed "Run optimization" out of reach with no way to scroll to it.
             cgOuter = uigridlayout(cpanel, [1 1]);
             cgOuter.Padding = [4 4 4 4]; cgOuter.BackgroundColor = obj.S.card;
-            cg = uigridlayout(cgOuter, [14 2]);
+            cg = uigridlayout(cgOuter, [16 2]);
             cg.Scrollable = 'on';
-            cg.RowHeight = repmat({'fit'}, 1, 14);
+            cg.RowHeight = repmat({'fit'}, 1, 16);
             cg.ColumnWidth = {'1.3x','1x'};
             cg.BackgroundColor = obj.S.card;
 
             r = 1;
-            lbl = uilabel(cg, 'Text', ['Recover fusimotor (gamma) drive from a simulated Ia, using the ' ...
-                'manuscript B-spline pipeline (runSpindleSimForOpt_Bspline_5cp). A sinusoidal gait-cycle ' ...
-                'MTU drives the fascicle; the fit recovers the gamma-static waveform (5 B-spline control ' ...
-                'points), the bag burst magnitude, and the waveform phase - 7 parameters in all.'], ...
-                'WordWrap', 'on');
-            lbl.Layout.Row = r; lbl.Layout.Column = [1 2]; r = r + 1;
+            obj.optCtrl.desc = uilabel(cg, 'Text', '', 'WordWrap', 'on');
+            obj.optCtrl.desc.Layout.Row = r; obj.optCtrl.desc.Layout.Column = [1 2]; r = r + 1;
+
+            % How gamma-DYNAMIC is modelled: the manuscript's on/off burst, or its
+            % Figure 1D form, a periodic B-spline like gamma static.
+            l = uilabel(cg, 'Text', 'gamma-dynamic model');
+            l.Layout.Row = r; l.Layout.Column = 1;
+            obj.optCtrl.gdMode = uidropdown(cg, ...
+                'Items', {'burst (on/off)', 'B-spline (5 points)'}, 'Value', 'burst (on/off)');
+            obj.optCtrl.gdMode.Layout.Row = r; obj.optCtrl.gdMode.Layout.Column = 2;
+            obj.optCtrl.gdMode.Tooltip = ['Burst: a rectangular gamma-dynamic burst with fixed ' ...
+                'timing; its level is fitted (7 parameters). B-spline: 5 control points over the ' ...
+                'gait cycle, like gamma static - the manuscript''s Figure 1D form (11 parameters).'];
+            obj.optCtrl.gdMode.ValueChangedFcn = @(s,e) obj.onGammaDynamicMode();
+            r = r + 1;
 
             hdr = uilabel(cg, 'Text', 'TRUE drive (makes the target)', 'FontWeight', 'bold');
             hdr.Layout.Row = r; hdr.Layout.Column = [1 2]; r = r + 1;
@@ -100,14 +110,26 @@ classdef SpindleToolkitApp < SpindleAppBase
                 'Try a different shape to see whether the fit still finds it.'];
             obj.optCtrl.trueShape.ValueChangedFcn = @(s,e) obj.previewTrueDrive();
             r = r + 1;
+            % The bag is strong, so the manuscript uses LOW gamma-dynamic levels;
+            % the default here is in that range.
             obj.optCtrl.trueBag = obj.addOptSpinner(cg, r, ...
-                'gamma-dynamic burst (% act.)', 0, 100, 10); r = r + 1;
+                'gamma-dynamic level (% act.)', 0, 100, 10); r = r + 1;
             obj.optCtrl.trueBag.ValueChangedFcn = @(s,e) obj.previewTrueDrive();
+            obj.optCtrl.trueBag.Tooltip = ['Burst: the burst level. B-spline: the peak of ' ...
+                'the shape below.'];
+            l = uilabel(cg, 'Text', 'gamma-dynamic shape (B-spline)');
+            l.Layout.Row = r; l.Layout.Column = 1;
+            obj.optCtrl.trueBagShape = uidropdown(cg, 'Items', obj.bagShapeNames(), ...
+                'Enable', 'off');
+            obj.optCtrl.trueBagShape.Layout.Row = r; obj.optCtrl.trueBagShape.Layout.Column = 2;
+            obj.optCtrl.trueBagShape.ValueChangedFcn = @(s,e) obj.previewTrueDrive();
+            r = r + 1;
 
             hdr = uilabel(cg, 'Text', 'INITIAL guess (starts the search)', 'FontWeight', 'bold');
             hdr.Layout.Row = r; hdr.Layout.Column = [1 2]; r = r + 1;
             obj.optCtrl.x0Bag = obj.addOptSpinner(cg, r, ...
-                'gamma-dynamic burst (% act.)', 0, 100, 38); r = r + 1;
+                'gamma-dynamic level (% act.)', 0, 100, 25); r = r + 1;
+            obj.optCtrl.x0Bag.Tooltip = 'Burst: the starting level. B-spline: all 5 points start here.';
 
             obj.optCtrl.tEnd    = obj.addOptSpinner(cg, r, 'Sim duration (s)', 1.0, 3.0, 1.9); r = r + 1;
             obj.optCtrl.tEnd.ValueChangedFcn = @(s,e) obj.previewTrueDrive();
@@ -115,11 +137,12 @@ classdef SpindleToolkitApp < SpindleAppBase
 
             % Parallel is worth a lot here: patternsearch polls 2N points per
             % iteration and they run independently, taking a default fit from
-            % ~4 min to ~1.5 min on 8 cores. On by default when the toolbox is
-            % present (the first run pays a one-off ~45 s pool startup).
+            % ~1.5 min to ~1 min on 8 cores (B-spline: ~2 min to ~1 min). On by
+            % default when the toolbox is present (the first run pays a one-off
+            % ~35 s pool startup).
             hasPar = ~isempty(ver('parallel')) && license('test', 'Distrib_Computing_Toolbox');
             obj.optCtrl.parallel = uicheckbox(cg, ...
-                'Text', 'Use parallel (~2.6x faster; first run starts a pool)', ...
+                'Text', 'Use parallel (~1.5-2x faster; first run starts a pool)', ...
                 'Value', hasPar, 'Enable', matlab.lang.OnOffSwitchState(hasPar));
             if ~hasPar
                 obj.optCtrl.parallel.Tooltip = 'Needs the Parallel Computing Toolbox.';
@@ -137,10 +160,15 @@ classdef SpindleToolkitApp < SpindleAppBase
 
             note = uilabel(cg, 'Text', ['The target is self-generated, so the true drive is ' ...
                 'known - drawn dashed on the left, and redrawn as you change these settings. ' ...
-                'A fit takes ~1.5 min with parallel on, ~4 min without.' newline newline ...
+                'A fit takes ~1 min with parallel on, ~1.5-2 min without (burst) or ~2 min ' ...
+                '(B-spline).' newline newline ...
+                'The cost is the manuscript''s: the receptor potential ABOVE its no-drive ' ...
+                'baseline, mean-normalized, scored between the dotted lines (gait phase 0-1.5, ' ...
+                'after one start-up cycle).' newline newline ...
                 'This is a hard optimization, and the manuscript runs it at TWO levels for that ' ...
-                'reason: an outer grid over burst timing, with a full fit at every node. The demo ' ...
-                'runs a single pass with timing fixed.' newline newline ...
+                'reason: an outer grid over burst timing (or, for the B-spline, its phase), with ' ...
+                'a full fit at every node. The demo runs a single pass with those held fixed.' ...
+                newline newline ...
                 'See docs/07_differences_from_manuscript.md.'], 'WordWrap', 'on', ...
                 'FontAngle', 'italic', 'FontColor', obj.S.muted);
             note.Layout.Row = r; note.Layout.Column = [1 2];
@@ -189,10 +217,12 @@ classdef SpindleToolkitApp < SpindleAppBase
             hold(ax, 'on');
             obj.optFitLines.init = plot(ax, NaN, NaN, '--', 'Color', obj.S.bag, 'LineWidth', 1.2);
             obj.optFitLines.opt  = plot(ax, NaN, NaN, '-', 'Color', obj.S.green, 'LineWidth', 1.6);
+            % The scored window's edges, as two dotted verticals in one line.
+            obj.optFitLines.win  = plot(ax, NaN, NaN, ':', 'Color', obj.S.muted, 'LineWidth', 1.2);
             hold(ax, 'off');
             title(ax, 'Target Ia vs model fit  (press Run optimization)');
-            xlabel(ax, 'time (s)'); ylabel(ax, 'r (a.u.)');
-            legend(ax, {'target (truth)','initial guess','optimized fit'}, ...
+            xlabel(ax, 'time (s)'); ylabel(ax, 'r above baseline (a.u.)');
+            legend(ax, {'target (truth)','initial guess','optimized fit','scored window'}, ...
                 'Location', 'best', 'FontSize', 8);
 
             % Same trick for the two drive panels: build every line ONCE, then
@@ -217,14 +247,19 @@ classdef SpindleToolkitApp < SpindleAppBase
             ax = obj.optAxGammaD;
             obj.optGammaLines.dTrue = plot(ax, NaN, NaN, '--', 'Color', grey, 'LineWidth', 1.5);
             hold(ax, 'on');
+            obj.optGammaLines.dTrueCP = plot(ax, NaN, NaN, 'o', 'MarkerSize', 7, ...
+                'LineStyle', 'none', 'MarkerFaceColor', [0.6 0.6 0.6], 'MarkerEdgeColor', grey);
             obj.optGammaLines.dOpt  = plot(ax, NaN, NaN, '-', 'Color', s.bag, 'LineWidth', 1.8);
+            obj.optGammaLines.dOptCP = plot(ax, NaN, NaN, 'o', 'MarkerSize', 7, ...
+                'LineStyle', 'none', 'Color', s.bag, 'MarkerFaceColor', s.bag);
             hold(ax, 'off');
-            title(ax, 'bag burst (\gamma-dynamic): target vs recovered');
+            title(ax, 'bag (\gamma-dynamic): target vs recovered');
             xlabel(ax, 'time (s)'); ylabel(ax, 'activation (%)'); ylim(ax, [0 100]);
-            legend(ax, {'target','recovered'}, 'Location', 'best', 'FontSize', 8);
+            legend(ax, {'target','target CP','recovered','recovered CP'}, ...
+                'Location', 'best', 'FontSize', 8);
 
             obj.beautify(ppanel);
-            obj.previewTrueDrive();
+            obj.onGammaDynamicMode();   % sets the description, then previews
             obj.refitAxes([obj.optAxGammaS obj.optAxGammaD obj.optAxFit obj.optAxCost]);
         end
 
@@ -235,11 +270,8 @@ classdef SpindleToolkitApp < SpindleAppBase
             if isempty(which('runSpindleSimForOpt_Bspline_5cp')), return; end
             try
                 ac = loadActivationCurve();
-                opts = struct('previewOnly', true, ...
-                    'trueBagPca', ac.actToPcaB(obj.pctToFrac(obj.optCtrl.trueBag.Value)), ...
-                    'trueCP',     ac.actToPcaC(obj.pctToFrac( ...
-                                      obj.chainShapeByName(obj.optCtrl.trueShape.Value))), ...
-                    'tEnd',       obj.optCtrl.tEnd.Value);
+                opts = obj.trueDriveOpts(ac);
+                opts.previewOnly = true;
                 gT = tutorialOptDemo(opts).gammaTrue;
                 pcaC2pct = @(v) 100 * min(max(ac.pCaToActC(v), 0), 1);
                 pcaB2pct = @(v) 100 * min(max(ac.pCaToActB(v), 0), 1);
@@ -247,13 +279,60 @@ classdef SpindleToolkitApp < SpindleAppBase
                 set(L.sTrue,   'XData', gT.t, 'YData', pcaC2pct(gT.chainPca));
                 set(L.sTrueCP, 'XData', gT.controlTimes, 'YData', pcaC2pct(gT.controlPca));
                 set(L.dTrue,   'XData', gT.t, 'YData', pcaB2pct(gT.bagPca));
+                set(L.dTrueCP, 'XData', gT.bagControlTimes, 'YData', pcaB2pct(gT.bagControlPca));
                 % A previous run's recovered traces no longer match this target.
-                set([L.sOpt L.sOptCP L.dOpt], 'XData', NaN, 'YData', NaN);
+                set([L.sOpt L.sOptCP L.dOpt L.dOptCP], 'XData', NaN, 'YData', NaN);
                 xlim(obj.optAxGammaS, [gT.t(1) gT.t(end)]);
                 xlim(obj.optAxGammaD, [gT.t(1) gT.t(end)]);
             catch ME
                 obj.optStatus.Text = ['Could not preview the target drive: ' ME.message];
             end
+        end
+
+        function opts = trueDriveOpts(obj, ac)
+            % The TRUE drive and settings, from the controls, in the units
+            % tutorialOptDemo takes (pCa). Shared by the preview and the run, so
+            % what is previewed is exactly what the fit is asked to recover.
+            isSpline = startsWith(obj.optCtrl.gdMode.Value, 'B-spline');
+            opts = struct();
+            if isSpline, opts.gammaDynamic = 'bspline'; else, opts.gammaDynamic = 'pulse'; end
+            lvl = obj.optCtrl.trueBag.Value;
+            opts.trueBagPca = ac.actToPcaB(obj.pctToFrac(lvl));
+            opts.trueGD     = ac.actToPcaB(obj.pctToFrac( ...
+                lvl * obj.bagShapeByName(obj.optCtrl.trueBagShape.Value)));
+            opts.trueCP     = ac.actToPcaC(obj.pctToFrac( ...
+                obj.chainShapeByName(obj.optCtrl.trueShape.Value)));
+            opts.tEnd       = obj.optCtrl.tEnd.Value;
+        end
+
+        function onGammaDynamicMode(obj)
+            isSpline = startsWith(obj.optCtrl.gdMode.Value, 'B-spline');
+            obj.setEnable(obj.optCtrl.trueBagShape, isSpline);
+            if isSpline
+                gdTxt = ['the gamma-dynamic waveform (5 more control points, the manuscript''s ' ...
+                    'Figure 1D form) - 11 parameters in all.'];
+            else
+                gdTxt = 'the bag burst level - 7 parameters in all.';
+            end
+            obj.optCtrl.desc.Text = ['Recover fusimotor (gamma) drive from a simulated Ia, ' ...
+                'using the manuscript B-spline pipeline. A sinusoidal gait-cycle MTU drives the ' ...
+                'fascicle; the fit recovers the gamma-static waveform (5 B-spline control ' ...
+                'points) and its phase, and ' gdTxt];
+            obj.previewTrueDrive();
+        end
+
+        function names = bagShapeNames(~)
+            s = SpindleToolkitApp.bagShapes();
+            names = cellfun(@(f) s.(f).name, fieldnames(s)', 'UniformOutput', false);
+        end
+
+        function shp = bagShapeByName(~, nm)
+            % A preset gamma-dynamic shape: 5 control points scaled to a peak of 1.
+            s = SpindleToolkitApp.bagShapes();
+            for f = fieldnames(s)'
+                if strcmp(s.(f{1}).name, nm), shp = s.(f{1}).shape; return; end
+            end
+            shp = s.early.shape;
         end
 
         function names = chainShapeNames(~)
@@ -293,13 +372,9 @@ classdef SpindleToolkitApp < SpindleAppBase
                 % does. Convert at this boundary only.
                 ac = loadActivationCurve();
                 pct2pcaB = @(v) ac.actToPcaB(obj.pctToFrac(v));
-                pct2pcaC = @(v) ac.actToPcaC(obj.pctToFrac(v));
 
-                opts = struct();
-                opts.trueBagPca  = pct2pcaB(obj.optCtrl.trueBag.Value);
+                opts = obj.trueDriveOpts(ac);
                 opts.bag0        = pct2pcaB(obj.optCtrl.x0Bag.Value);
-                opts.trueCP      = pct2pcaC(obj.chainShapeByName(obj.optCtrl.trueShape.Value));
-                opts.tEnd        = obj.optCtrl.tEnd.Value;
                 opts.maxIter     = round(obj.optCtrl.maxIter.Value);
                 opts.useParallel = obj.optCtrl.parallel.Value;
 
@@ -338,6 +413,9 @@ classdef SpindleToolkitApp < SpindleAppBase
             title(ax, 'Target Ia vs model fit');
             obj.padY(ax, [res.target(:); res.fit0(:); res.fitOpt(:)]);
             xlim(ax, [res.t(1) res.t(end)]);
+            yl = ylim(ax); w = res.scoreWindow;
+            set(obj.optFitLines.win, 'XData', [w(1) w(1) NaN w(2) w(2)], ...
+                'YData', [yl NaN yl]);
 
             % Everything is shown in % activation, to match the rest of the
             % tutorial. The fit itself ran in pCa (the model's own variable).
@@ -357,27 +435,34 @@ classdef SpindleToolkitApp < SpindleAppBase
             set(L.sOptCP,  'XData', gO.controlTimes, 'YData', pcaC2pct(gO.controlPca));
             set(L.dTrue,   'XData', gT.t, 'YData', pcaB2pct(gT.bagPca));
             set(L.dOpt,    'XData', gO.t, 'YData', pcaB2pct(gO.bagPca));
+            set(L.dTrueCP, 'XData', gT.bagControlTimes, 'YData', pcaB2pct(gT.bagControlPca));
+            set(L.dOptCP,  'XData', gO.bagControlTimes, 'YData', pcaB2pct(gO.bagControlPca));
             xlim(obj.optAxGammaS, [gT.t(1) gT.t(end)]);
             xlim(obj.optAxGammaD, [gT.t(1) gT.t(end)]);
 
-            % Table (all 7 fitted parameters), converted to the displayed units:
+            % Table (every fitted parameter), converted to the displayed units:
             % activation % for the drive levels, seconds for the phase. True /
             % initial / recovered only - no per-parameter "% closed" score. The
             % parameters are not independent (the 5 control points trade off
             % against each other and against the burst), so a per-parameter
             % fraction reads as an identifiability claim the fit cannot support.
-            labels = {'Bag burst (% act.)', 'Chain CP1 @0% (% act.)', ...
-                      'Chain CP2 @20% (% act.)', 'Chain CP3 @40% (% act.)', ...
-                      'Chain CP4 @60% (% act.)', 'Chain CP5 @80% (% act.)', ...
-                      'Waveform phase (s)'};
+            pctAt = {'0','20','40','60','80'};
             data = cell(numel(res.names), 4);
             for i = 1:numel(res.names)
-                switch res.names{i}
-                    case 'bagPca',                  cv = pcaB2pct;
-                    case {'cp1','cp2','cp3','cp4','cp5'}, cv = pcaC2pct;
-                    otherwise,                      cv = @(v) v;   % phase, in seconds
+                nm = res.names{i};
+                switch nm
+                    case 'bagPca'
+                        cv = pcaB2pct; lab = 'Bag burst (% act.)';
+                    case {'gd1','gd2','gd3','gd4','gd5'}
+                        k = str2double(nm(end));
+                        cv = pcaB2pct; lab = sprintf('Bag CP%d @%s%% (%% act.)', k, pctAt{k});
+                    case {'cp1','cp2','cp3','cp4','cp5'}
+                        k = str2double(nm(end));
+                        cv = pcaC2pct; lab = sprintf('Chain CP%d @%s%% (%% act.)', k, pctAt{k});
+                    otherwise
+                        cv = @(v) v; lab = 'Chain waveform phase (s)';
                 end
-                data{i,1} = labels{i};
+                data{i,1} = lab;
                 data{i,2} = round(cv(res.xTrue(i)), 2);
                 data{i,3} = round(cv(res.x0(i)),    2);
                 data{i,4} = round(cv(res.xOpt(i)),  2);
@@ -434,9 +519,9 @@ classdef SpindleToolkitApp < SpindleAppBase
             % What the optimizer compares. Default is the receptor potential:
             % the cost is mean-normalized (each trace divided by its own mean),
             % so only shape is compared and the units difference cancels.
-            fitRow = uigridlayout(cg, [4 2]);
+            fitRow = uigridlayout(cg, [5 2]);
             fitRow.Layout.Row = 6;
-            fitRow.ColumnWidth = {'1.1x','1x'}; fitRow.RowHeight = repmat({'fit'}, 1, 4);
+            fitRow.ColumnWidth = {'1.1x','1x'}; fitRow.RowHeight = repmat({'fit'}, 1, 5);
             fitRow.Padding = [0 0 0 0]; fitRow.RowSpacing = 6;
             fitRow.BackgroundColor = s.card;
             uilabel(fitRow, 'Text', 'Optimize by fitting');
@@ -447,10 +532,9 @@ classdef SpindleToolkitApp < SpindleAppBase
             obj.udSolver = uidropdown(fitRow, ...
                 'Items', {'fmincon (default)', 'patternsearch (manuscript)'}, ...
                 'Value', 'fmincon (default)');
-            obj.udSolver.Tooltip = ['fmincon converges better on this fit and is the default, ' ...
-                'though it is SLOWER (measured on the built-in example: fmincon 147 s to cost ' ...
-                '0.101, patternsearch 49 s to 0.243 at the same iteration count - patternsearch ' ...
-                'is quicker per fit but needs more iterations here). ' ...
+            obj.udSolver.Tooltip = ['fmincon is the default and does better on this fit ' ...
+                '(measured on the built-in example, 20 iterations: fmincon 62 s to cost 0.043, ' ...
+                'patternsearch 72 s to 0.084). ' ...
                 'patternsearch is what the manuscript uses - derivative-free, so it copes better ' ...
                 'with a stepped cost (which is what you get in firing mode) - and is worth trying ' ...
                 'if a fit looks like it stalled.'];
@@ -472,27 +556,41 @@ classdef SpindleToolkitApp < SpindleAppBase
                 'periodicity assumed - covers constant and ramp as special cases. ' ...
                 'Periodic: one cycle tiled, as the manuscript does for gait. ' ...
                 'Constant: a single level (4 parameters instead of 8, so fastest).'];
-            obj.udGammaStatic.ValueChangedFcn = @(s2,e) obj.onGammaStaticMode();
+            obj.udGammaStatic.ValueChangedFcn = @(s2,e) obj.onSplineMode();
+
+            % How gamma-DYNAMIC is modelled: the on/off burst (timing fitted), or
+            % the same B-splines as gamma static - the manuscript's Figure 1D form.
+            uilabel(fitRow, 'Text', 'gamma-dynamic model');
+            obj.udGammaDynamic = uidropdown(fitRow, 'Items', ...
+                {'burst (level + timing)', 'B-spline, free (any protocol)', ...
+                 'B-spline, periodic (gait/cyclic)'}, 'Value', 'burst (level + timing)');
+            obj.udGammaDynamic.Tooltip = ['Burst: a rectangular burst; its level, onset and ' ...
+                'offset are fitted (3 parameters). B-spline: 5 control points, free or periodic, ' ...
+                'as for gamma static - the manuscript''s Figure 1D form (5 parameters).'];
+            obj.udGammaDynamic.ValueChangedFcn = @(s2,e) obj.onSplineMode();
 
             uilabel(fitRow, 'Text', 'Cycle period (s)');
             obj.udCycle = uispinner(fitRow, 'Limits', [0.05 10], 'Value', 0.64, ...
                 'Step', 0.01, 'Enable', 'off');
-            obj.udCycle.Tooltip = 'Seconds per cycle. Used only by the periodic B-spline.';
-            obj.udFitTarget.Tooltip = ['Receptor potential: the model''s r is fitted to your ' ...
-                'recorded rate. The cost is mean-normalized, so only shape matters and the ' ...
-                'units cancel. Firing rate: pushes the model through the spike generator ' ...
-                'first, which saturates at 250 spikes/s at dt = 1 ms.'];
+            obj.udCycle.Tooltip = 'Seconds per cycle. Used only by the periodic B-splines.';
+            obj.udFitTarget.Tooltip = ['Receptor potential: the model''s r, above its no-drive ' ...
+                'baseline, is fitted to your recorded rate - the manuscript''s cost. It is ' ...
+                'mean-normalized, so only shape matters and the units cancel. Firing rate: ' ...
+                'pushes the model through the spike generator first, which saturates at ' ...
+                '250 spikes/s at dt = 1 ms.'];
 
             note = uilabel(cg, 'Text', ['FITTED: the gamma-static drive (5 B-spline control ' ...
-                'points, or a single level in constant mode), the gamma-dynamic burst magnitude, ' ...
-                'and the burst ONSET and OFFSET times - 8 parameters, or 4 in constant mode. ' ...
-                'Burst timing is fitted here, unlike the Gamma optimization tab where it is held ' ...
-                'fixed.' newline newline ...
+                'points, or a single level in constant mode) and the gamma-dynamic drive (the ' ...
+                'burst level, ONSET and OFFSET, or 5 B-spline control points) - 6 to 10 ' ...
+                'parameters. Burst timing is fitted here, unlike the Gamma optimization tab ' ...
+                'where it is held fixed.' newline newline ...
                 'The cost compares SHAPE - each trace divided by its own mean - so the model''s ' ...
                 'receptor potential can be fitted directly to your recorded firing, and doing ' ...
                 'so keeps the spike generator''s 250 spikes/s ceiling out of the objective. ' ...
-                'That matters: on the built-in example the receptor fit recovers the true bag ' ...
-                'burst while the firing fit collapses it to zero width. Prefer the default ' ...
+                'As in the manuscript, r is taken above its no-drive baseline, so it has a ' ...
+                'true zero like a firing rate. ' ...
+                'That matters: on the built-in example the receptor fit gets the bag level about ' ...
+                'right, while the firing fit overdrives the bag by about 2 pCa. Prefer the default ' ...
                 'unless you want the spike generator in the loop. Details in docs/06_your_data.md.'], ...
                 'WordWrap', 'on', ...
                 'FontAngle', 'italic', 'FontColor', s.muted, 'FontSize', 11);
@@ -644,8 +742,13 @@ classdef SpindleToolkitApp < SpindleAppBase
                     case 'constant level',                   gs = 'constant';
                     otherwise,                               gs = 'bspline-free';
                 end
+                switch obj.udGammaDynamic.Value
+                    case 'B-spline, free (any protocol)',    gd = 'bspline-free';
+                    case 'B-spline, periodic (gait/cyclic)', gd = 'bspline-periodic';
+                    otherwise,                               gd = 'pulse';
+                end
                 res = runOptFromData(obj.udData, struct('maxIter', 20, ...
-                    'fitTarget', ft, 'solver', sv, 'gammaStatic', gs, ...
+                    'fitTarget', ft, 'solver', sv, 'gammaStatic', gs, 'gammaDynamic', gd, ...
                     'cyclePeriod', obj.udCycle.Value, ...
                     'iterFcn', @(info) obj.onUserOptIter(info)));
                 obj.renderUserOptimize(res);
@@ -713,10 +816,11 @@ classdef SpindleToolkitApp < SpindleAppBase
             obj.refitAxes(a);
         end
 
-        function onGammaStaticMode(obj)
-            % Cycle period only means anything for the periodic B-spline.
+        function onSplineMode(obj)
+            % Cycle period only means anything for a periodic B-spline.
+            per = 'B-spline, periodic (gait/cyclic)';
             obj.setEnable(obj.udCycle, ...
-                strcmp(obj.udGammaStatic.Value, 'B-spline, periodic (gait/cyclic)'));
+                strcmp(obj.udGammaStatic.Value, per) || strcmp(obj.udGammaDynamic.Value, per));
         end
 
         function saveUserRun(obj)
@@ -750,6 +854,15 @@ classdef SpindleToolkitApp < SpindleAppBase
     end
 
     methods (Static)
+        function s = bagShapes()
+            % Preset TRUE gamma-dynamic B-spline shapes: the 5 control points at
+            % 0/20/40/60/80% of the gait cycle, scaled to a peak of 1 (the level
+            % control sets the peak, in % activation).
+            s.early  = struct('name', 'early burst',  'shape', [0 1 0.5 0 0]);
+            s.late   = struct('name', 'late burst',   'shape', [0 0 0.3 1 0.3]);
+            s.flat   = struct('name', 'flat (tonic)', 'shape', [1 1 1 1 1]);
+        end
+
         function s = chainShapes()
             % Preset TRUE gamma-static waveforms, as the 5 B-spline control
             % points at 0/20/40/60/80% of the gait cycle, in % ACTIVATION.

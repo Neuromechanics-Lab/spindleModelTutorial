@@ -55,7 +55,7 @@ if strcmp(computer('arch'), 'maci64')
 end
 
 entry   = fullfile(root, 'launchLearnAppDeployed.m');
-dataMat = fullfile(root, 'data', 'ActCurveSim120240819.mat');
+dataMat = fullfile(root, 'data', 'ActCurveSim120260814.mat');
 figPng  = fullfile(root, 'data', 'spindleModelFig.png');
 % Output is platform-specific (a Mac .app vs a Windows .exe), so keep each
 % platform's build in its own folder - run this script once per OS.
@@ -103,5 +103,5 @@ fprintf('  standalone app : %s\n', fullfile(outDir, appName));
 fprintf('  installer      : %s\n', fullfile(outDir, 'installer'));
 
 % ---- Equivalent one-liner using the older mcc interface -----------------
-% mcc -m launchLearnAppDeployed.m -a data/ActCurveSim120240819.mat -d build/SpindleTutorialLearn
+% mcc -m launchLearnAppDeployed.m -a data/ActCurveSim120260814.mat -d build/SpindleTutorialLearn
 end

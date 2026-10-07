@@ -126,6 +126,15 @@ if tpaths.hasBspline
         isequal(pv.gammaTrue.chainPca, res.gammaTrue.chainPca) && ...
         isequal(pv.gammaTrue.bagPca,   res.gammaTrue.bagPca) && ...
         isequal(pv.gammaTrue.controlPca, res.gammaTrue.controlPca));
+
+    % The manuscript's Figure 1D form: gamma dynamic as a B-spline too.
+    resS = tutorialOptDemo(struct('gammaDynamic', 'bspline', 'tEnd', 1.4, 'maxIter', 3));
+    nfail = nfail + check('B-spline gamma-dynamic demo fits 11 finite parameters', ...
+        numel(resS.xOpt) == 11 && all(isfinite(resS.xOpt)) && resS.fvalOpt <= resS.fval0);
+    pvS = tutorialOptDemo(struct('gammaDynamic', 'bspline', 'tEnd', 1.4, 'previewOnly', true));
+    nfail = nfail + check('B-spline preview matches the fit''s own target exactly', ...
+        isequal(pvS.gammaTrue.bagPca, resS.gammaTrue.bagPca) && ...
+        isequal(pvS.gammaTrue.bagControlPca, resS.gammaTrue.bagControlPca));
 else
     fprintf('  [SKIP] optimization demo (gammaDriveOptimization not on path)\n');
 end
@@ -147,6 +156,13 @@ nfail = nfail + check('mean-normalized cost is scale-invariant', ...
     abs(meanNormRMSE(3.7 * uo.r, uo.r)) < 1e-12);
 nfail = nfail + check('mean-normalized cost is non-zero for a different shape', ...
     meanNormRMSE(uo.r, uo.r(end:-1:1)) > 1e-3);
+% The manuscript's receptor-potential cost: r above its no-drive baseline,
+% floored at 0. Shifting r and its baseline together changes nothing, and a
+% model entirely at or below baseline is rejected.
+nfail = nfail + check('r-potential cost ignores a shared offset', ...
+    abs(rPotentialCost(uo.r + 5, uo.r, 5) - rPotentialCost(uo.r, uo.r, 0)) < 1e-12);
+nfail = nfail + check('r-potential cost rejects a model at/below baseline', ...
+    rPotentialCost(uo.r, uo.r, max(uo.r) + 1) == 1e6);
 for gs = {'bspline-free', 'bspline-periodic', 'constant'}
     o = struct('maxIter', 3, 'gammaStatic', gs{1}, 'cyclePeriod', 0.64);
     rg = runOptFromData(d, o);
@@ -154,6 +170,18 @@ for gs = {'bspline-free', 'bspline-periodic', 'constant'}
     nfail = nfail + check(sprintf('gammaStatic=%s fits (%d params)', gs{1}, nP), ...
         isfinite(rg.fvalOpt) && strcmp(rg.gammaStatic, gs{1}) && ...
         nP == 4 + 4*~strcmp(gs{1}, 'constant'));
+end
+for gd = {'bspline-free', 'bspline-periodic'}
+    o = struct('maxIter', 3, 'gammaDynamic', gd{1}, 'cyclePeriod', 0.64);
+    rg = runOptFromData(d, o);
+    nfail = nfail + check(sprintf('gammaDynamic=%s fits (%d params)', gd{1}, numel(rg.xOpt)), ...
+        isfinite(rg.fvalOpt) && strcmp(rg.gammaDynamic, gd{1}) && numel(rg.xOpt) == 10);
+end
+try
+    runOptFromData(d, struct('maxIter', 1, 'gammaDynamic', 'bspline-periodic'));
+    nfail = nfail + check('periodic gamma-dynamic demands a cycle period', false);
+catch
+    nfail = nfail + check('periodic gamma-dynamic demands a cycle period', true);
 end
 % The periodic spline must refuse to guess a cycle period.
 try

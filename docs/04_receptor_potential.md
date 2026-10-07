@@ -59,9 +59,11 @@ window shows it. Two limits set by the time step are why it is confined there at
   them and the rate can only be `1/(k*dt)`: 250, 200, 167, 143, 125, … The steps
   get coarser the faster the firing.
 
-Any realistic gamma drive pushes `r` past that ceiling and the firing trace goes
-flat, but this reflects a limitation of the time step used in simulation rather
-than anything about the model.
+The walkthrough keeps the gamma drive low (20% chain, 6% bag — the range the
+manuscript uses), so its firing stays under the ceiling and the quantised steps
+are visible. Stronger drive soon pushes `r` past the ceiling and the firing trace
+goes flat, but this reflects a limitation of the time step used in simulation
+rather than anything about the model.
 
 `examples/spikesFromReceptorPotential.m` runs the generator on any simulation,
 checks directly for saturation, and documents what to change — the gain/threshold

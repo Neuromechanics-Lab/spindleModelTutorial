@@ -15,16 +15,29 @@ function result = tutorialOptDemo(opts)
 %       does not change it) and reused on every objective evaluation.
 %     - Gamma static (chain): a periodic B-spline with 5 control points (in pCa)
 %       plus a phase shift -- a flexible fusimotor waveform over the gait cycle.
-%     - Gamma dynamic (bag): a phasic burst of magnitude x(1), with ON/OFF timing
-%       held FIXED (the manuscript optimizes timing in an outer grid; here we fix
-%       it and run the inner fmincon over magnitude + waveform, which is the part
-%       that recovers cleanly).
+%     - Gamma dynamic (bag), one of two forms (opts.gammaDynamic):
+%         'pulse'   (default) a phasic burst of magnitude bagPca, with ON/OFF
+%                   timing held FIXED (the manuscript optimizes timing in an
+%                   outer grid; here it is fixed and only the inner fit runs).
+%         'bspline' the manuscript's Figure 1D form: a periodic B-spline with 5
+%                   control points (in pCa), like gamma static, with its phase
+%                   held FIXED at 0 (the manuscript grids over it).
+%                   Calls runSpindleSimForOpt_Bspline_5cp_gDynBspline.
+%     - Cost: the manuscript's receptor-potential cost (rPotentialCost): r above
+%       its no-drive baseline mean(r(1:10)), floored at 0, mean-normalized,
+%       scored over gait phase (0, 1.5) after skipping the first cycle. The
+%       self-generated target gets the same baseline subtraction and floor, so
+%       it has a true zero like the recorded firing rate it stands in for.
 %
-%   Fitted vector x = [bagPca, cp1, cp2, cp3, cp4, cp5, phase]   (7 parameters).
+%   Fitted vector x:
+%     pulse:   [bagPca, cp1..cp5, phase]          (7 parameters)
+%     bspline: [gd1..gd5, cp1..cp5, phase]        (11 parameters)
 %
 %   opts (all optional):
-%     .trueBagPca .trueCP(1x5) .truePhase   ground-truth parameters
-%     .bag0 .cp0(1x5) .phase0               initial guess
+%     .gammaDynamic                         'pulse' (default) | 'bspline'
+%     .trueBagPca .trueCP(1x5) .truePhase   ground-truth parameters (pulse)
+%     .trueGD(1x5)                          ground-truth bag control points (bspline)
+%     .bag0 .gd0(1x5) .cp0(1x5) .phase0     initial guess
 %     .gDynOn .gDynOff                      fixed burst timing (% gait cycle)
 %     .tEnd .maxIter                        horizon / iteration budget
 %     .iterFcn                              callback(info) for live app updates
@@ -42,16 +55,36 @@ end
 if nargin < 1, opts = struct(); end
 
 % -- Ground truth / guess / bounds -------------------------------------
-trueBagPca = getOpt(opts, 'trueBagPca', 5.5);
+gammaDynamic = lower(getOpt(opts, 'gammaDynamic', 'pulse'));
+if ~ismember(gammaDynamic, {'pulse','bspline'})
+    error('tutorialOptDemo:badGammaDynamic', ...
+        'opts.gammaDynamic must be ''pulse'' or ''bspline'' (got ''%s'').', gammaDynamic);
+end
+isSpline = strcmp(gammaDynamic, 'bspline');
+% Bag levels default LOW (~10% activation), the range the manuscript uses:
+% the bag is strong, so a little gamma-dynamic goes a long way.
+trueBagPca = getOpt(opts, 'trueBagPca', 8.4);
+trueGD     = getOpt(opts, 'trueGD',   [9.0 8.4 8.7 9.0 9.0]);
 trueCP     = getOpt(opts, 'trueCP',   [6.8 5.6 6.0 6.6 7.2]);
 truePhase  = getOpt(opts, 'truePhase', 0.0);
-bag0   = getOpt(opts, 'bag0',   7.0);
+bag0   = getOpt(opts, 'bag0',   7.5);
+gd0    = getOpt(opts, 'gd0',    bag0 * ones(1,5));
 cp0    = getOpt(opts, 'cp0',    [6.5 6.5 6.5 6.5 6.5]);
 phase0 = getOpt(opts, 'phase0', 0.0);
+gDynPhase = 0;   % bspline: the bag waveform's phase, held fixed (see above)
 
-xTrue = [trueBagPca, trueCP(:)', truePhase];
-x0    = [bag0,       cp0(:)',    phase0];
-names = {'bagPca','cp1','cp2','cp3','cp4','cp5','phase'};
+cpNames = {'cp1','cp2','cp3','cp4','cp5'};
+if isSpline
+    xTrue = [trueGD(:)', trueCP(:)', truePhase];
+    x0    = [gd0(:)',    cp0(:)',    phase0];
+    names = [{'gd1','gd2','gd3','gd4','gd5'}, cpNames, {'phase'}];
+    nBag  = 5;
+else
+    xTrue = [trueBagPca, trueCP(:)', truePhase];
+    x0    = [bag0,       cp0(:)',    phase0];
+    names = [{'bagPca'}, cpNames, {'phase'}];
+    nBag  = 1;
+end
 
 % -- Timing base --------------------------------------------------------
 p = defaultTutorialParams();
@@ -64,8 +97,8 @@ p.protocol.perturbStart = 0.3;
 p.protocol.amplitude_pct = 8;
 p.mtu.alphaMode = 'sine';               % alpha modulated over the gait cycle
 p.mtu.alphaFreq = MTUfreq;
-p.sim.tEnd = getOpt(opts, 'tEnd', 1.6);   % settle + ~2 gait cycles (kept short
-                                          % so the interactive fit stays snappy)
+p.sim.tEnd = getOpt(opts, 'tEnd', 1.9);   % settle + 2.5 gait cycles: just long
+                                          % enough to hold the whole scored window
 
 dt = p.sim.dt;
 t  = 0:dt:p.sim.tEnd;
@@ -74,8 +107,8 @@ sineStart = find(t >= p.protocol.perturbStart, 1, 'first');
 gDynOn  = getOpt(opts, 'gDynOn', 10);   % % gait cycle
 gDynOff = getOpt(opts, 'gDynOff', 60);
 
-lb = [4.5, 4.5*ones(1,5), -cycle_period/2];
-ub = [9.0, 9.0*ones(1,5),  cycle_period/2];
+lb = [4.5*ones(1,nBag), 4.5*ones(1,5), -cycle_period/2];
+ub = [9.0*ones(1,nBag), 9.0*ones(1,5),  cycle_period/2];
 % patternsearch polls 2N points per iteration, so it needs more iterations than
 % fmincon did. The manuscript allows 200 iterations / 400 evaluations per grid
 % node; this default is smaller so an interactive fit still finishes in a couple
@@ -96,7 +129,7 @@ if strcmp(solver, 'patternsearch') && isempty(which('patternsearch'))
     solver = 'fmincon';   % Global Optimization Toolbox absent
 end
 
-% -- Activation interpolants (chain) -----------------------------------
+% -- Activation interpolants (chain; bag for the B-spline form) --------
 ac = loadActivationCurve();
 pCaToAct = ac.pCaToActC;
 actToPca = ac.actToPcaC;
@@ -122,19 +155,40 @@ mtData = mt.mtData;
 
     function [r_t, r, rs, rd] = simulate(x)
         sB = sarcB0; sC = sarcC0;
-        sB.activating_pCa = x(1);
-        cp = x(2:6)';
-        phase = x(7);
-        [r_t, ~, ~, r, rs, rd] = runSpindleSimForOpt_Bspline_5cp( ...
-            t, sineStart, MTUfreq, act_freq, sC, sB, gDynOn, gDynOff, ...
-            cp, phase, mtData, pCaToAct, actToPca);
+        cp = x(nBag+1:nBag+5)';
+        phase = x(nBag+6);
+        if isSpline
+            [r_t, ~, ~, r, rs, rd] = runSpindleSimForOpt_Bspline_5cp_gDynBspline( ...
+                t, sineStart, MTUfreq, act_freq, sC, sB, x(1:5)', gDynPhase, ...
+                cp, phase, mtData, pCaToAct, actToPca, ac.pCaToActB, ac.actToPcaB);
+        else
+            sB.activating_pCa = x(1);
+            [r_t, ~, ~, r, rs, rd] = runSpindleSimForOpt_Bspline_5cp( ...
+                t, sineStart, MTUfreq, act_freq, sC, sB, gDynOn, gDynOff, ...
+                cp, phase, mtData, pCaToAct, actToPca);
+        end
+    end
+
+% -- Scored signal: r above its no-drive baseline -----------------------
+% Both drive constructions force samples 1:10 silent, so mean(r(1:10)) is the
+% receptor potential with no drive - the manuscript's baseline. See
+% rPotentialCost for why it is subtracted.
+nBaselineSamples = 10;
+    function s = aboveBaseline(r)
+        s = r(:) - mean(r(1:nBaselineSamples));
+        s(s < 0) = 0;
     end
 
 % -- Target from truth --------------------------------------------------
-[tgt_t, target] = simulate(xTrue);
-% Cost is a single MEAN-NORMALIZED RMSE on the TOTAL receptor potential, exactly
-% as the manuscript scores one recorded trace
-% (objFuncWithFixedTiming_Bspline_5cp_normSmooth). See compute/meanNormRMSE.m.
+[tgt_t, rTarget] = simulate(xTrue);
+target = aboveBaseline(rTarget);
+% Scored window: gait phase (0, 1.5), counted from one cycle after the stretch
+% starts, as the manuscript does - the first cycle is a start-up transient.
+tOffset = t(sineStart) + cycle_period;
+scoreWin = [tOffset, tOffset + 1.5*cycle_period];
+inWin = tgt_t(:) > scoreWin(1) & tgt_t(:) < scoreWin(2);
+% Cost is a single MEAN-NORMALIZED RMSE on the TOTAL receptor potential, as the
+% manuscript scores one recorded trace. See compute/rPotentialCost.m.
 %
 % An earlier version scored rs and rd SEPARATELY. That recovered the parameters
 % far better - but only because a self-generated target lets you decompose it
@@ -147,7 +201,8 @@ mtData = mt.mtData;
         try
             [rt, rr] = simulate(x);
             fitR = interp1(rt(:), rr(:), tgt_t(:), 'linear', 'extrap');
-            c = meanNormRMSE(fitR, target(:));
+            if nnz(inWin) < 5, c = 1e6; return; end
+            c = rPotentialCost(fitR(inWin), target(inWin), mean(rr(1:nBaselineSamples)));
         catch
             c = 1e6;
         end
@@ -204,32 +259,47 @@ gammaOpt  = recoverGamma(xOpt);
 
     function g = recoverGamma(x)
         sB = sarcB0; sC = sarcC0;
-        sB.activating_pCa = x(1);
-        [sC, sB] = getIntrafusal_pCa_Bspline_5cp(t, sineStart, MTUfreq, act_freq, ...
-            sC, sB, gDynOn, gDynOff, x(2:6)', x(7), pCaToAct, actToPca);
+        cp = x(nBag+1:nBag+5)'; phase = x(nBag+6);
+        if isSpline
+            [sC, sB] = getIntrafusal_pCa_Bspline_5cp_gDynBspline(t, sineStart, MTUfreq, ...
+                act_freq, sC, sB, x(1:5)', gDynPhase, cp, phase, ...
+                pCaToAct, actToPca, ac.pCaToActB, ac.actToPcaB);
+        else
+            sB.activating_pCa = x(1);
+            [sC, sB] = getIntrafusal_pCa_Bspline_5cp(t, sineStart, MTUfreq, act_freq, ...
+                sC, sB, gDynOn, gDynOff, cp, phase, pCaToAct, actToPca);
+        end
         g.t = t;
         g.chainPca = sC.pCa(:);      % gamma-static waveform (pCa)
-        g.bagPca   = sB.pCa(:);      % gamma-dynamic burst (pCa)
+        g.bagPca   = sB.pCa(:);      % gamma-dynamic drive (pCa)
         % control-point markers (at 0,20,40,60,80% of the cycle from perturbStart)
-        g.controlTimes = t(sineStart) + x(7) + [0 .2 .4 .6 .8] * cycle_period;
-        g.controlPca   = x(2:6)';
+        g.controlTimes = t(sineStart) + phase + [0 .2 .4 .6 .8] * cycle_period;
+        g.controlPca   = cp;
+        if isSpline
+            g.bagControlTimes = t(sineStart) + gDynPhase + [0 .2 .4 .6 .8] * cycle_period;
+            g.bagControlPca   = x(1:5)';
+        else
+            g.bagControlTimes = [];
+            g.bagControlPca   = [];
+        end
     end
 
 % -- Assemble -----------------------------------------------------------
 result.method   = 'bspline';
+result.gammaDynamic = gammaDynamic;
 result.names    = names;
-result.labels   = {'Bag burst pCa','CP1 (0%)','CP2 (20%)','CP3 (40%)', ...
-                   'CP4 (60%)','CP5 (80%)','Phase (s)'};
 result.xTrue    = xTrue;
 result.x0       = x0;
 result.xOpt     = xOpt;
 result.lb       = lb;
 result.ub       = ub;
 result.history  = history;
+% Traces are r ABOVE BASELINE (what the cost compares), with the scored window.
 result.t        = tgt_t(:);
 result.target   = target(:);
-result.fit0     = interp1(t0(:), fit0(:), tgt_t(:), 'linear', 'extrap');
-result.fitOpt   = interp1(tO(:), fitOpt(:), tgt_t(:), 'linear', 'extrap');
+result.fit0     = interp1(t0(:), aboveBaseline(fit0), tgt_t(:), 'linear', 'extrap');
+result.fitOpt   = interp1(tO(:), aboveBaseline(fitOpt), tgt_t(:), 'linear', 'extrap');
+result.scoreWindow = scoreWin;
 result.fval0    = fval0;
 result.fvalOpt  = fvalOpt;
 % Deliberately NO per-parameter recovery score. Any such fraction reads as a

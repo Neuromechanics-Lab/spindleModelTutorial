@@ -80,8 +80,9 @@ switch lower(kind)
         S.fitTarget   = res.fitTarget;
         S.fitUnits    = res.fitUnits;
         S.solver      = res.solver;
-        S.gammaStatic = res.gammaStatic;
-        S.cyclePeriod = res.cyclePeriod;   % [] unless gammaStatic is periodic
+        S.gammaStatic  = res.gammaStatic;
+        S.gammaDynamic = res.gammaDynamic;
+        S.cyclePeriod  = res.cyclePeriod;  % [] unless a drive is periodic
 
         if strcmp(res.fitTarget, 'receptor')
             fitUnitSuffix = 'r_au';        % receptor potential, arbitrary units

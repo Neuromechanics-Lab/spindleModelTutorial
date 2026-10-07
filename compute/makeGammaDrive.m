@@ -10,8 +10,11 @@ function [sarcB, sarcC] = makeGammaDrive(t, gamma, sarcB, sarcC)
 %       chainOn. A constant level, a sinusoid, or a 5-control-point B-spline
 %       (chainMode = 'constant' | 'sine' | 'bspline'; see the bspline branch for
 %       the periodic vs free variants).
-%     - Bag fiber    <- gamma DYNAMIC: a phasic burst. Silent baseline with a
-%       rectangular burst between bagOn/bagOff.
+%     - Bag fiber    <- gamma DYNAMIC: a phasic burst (silent baseline with a
+%       rectangular burst between bagOn/bagOff), or - bagMode = 'bspline', pCa
+%       domain only - a 5-control-point B-spline from bagOn, built exactly like
+%       the chain's (gamma.bag_cp, gamma.bag_periodic, gamma.bag_cyclePeriod).
+%       That is the manuscript's Figure 1D form.
 %
 %   TWO WAYS TO SPECIFY THE DRIVE LEVELS
 %   ------------------------------------
@@ -82,33 +85,12 @@ if ~isempty(onIdx)
                 sarcC.pCa(active) = gamma.chain_pCa - ...
                     gamma.chain_amp * sin(2*pi*gamma.chain_freq*tRel + gamma.chain_phase);
             case 'bspline'
-                % 5 control points in pCa, spline-interpolated. Two variants:
-                %
-                %  PERIODIC (gamma.chain_periodic = true) reproduces the
-                %  manuscript's construction (getIntrafusal_pCa_Bspline_5cp):
-                %  points sit at 0/20/40/60/80% of one cycle, a sixth point
-                %  repeats the first so the waveform joins up, and the cycle is
-                %  tiled across the trial. Use it when the protocol really is
-                %  cyclic - it ties every cycle to one waveform, so 5 numbers
-                %  describe all of them.
-                %
-                %  FREE (the default) spreads the same 5 points evenly across
-                %  the ACTIVE window with no wrap constraint, so it can express
-                %  a constant (all points equal), a ramp (monotonic points) or
-                %  any smooth shape. Use it for arbitrary protocols, where a
-                %  repeating waveform would be meaningless.
-                cp = gamma.chain_cp(:);
+                % 5 control points in pCa; periodic or free (see splineDrive).
+                per = [];
                 if isfield(gamma, 'chain_periodic') && gamma.chain_periodic
                     per = gamma.chain_cyclePeriod;
-                    ctrlT = linspace(0, 1, 6)' * per;      % one cycle
-                    ctrlV = [cp; cp(1)];                   % last = first
-                    phi   = mod(tRel(:), per);             % tile it
-                    sarcC.pCa(active) = interp1(ctrlT, ctrlV, phi, 'spline');
-                else
-                    span  = max(tRel(end), eps);
-                    ctrlT = linspace(0, span, numel(cp))';
-                    sarcC.pCa(active) = interp1(ctrlT, cp, tRel(:), 'spline');
                 end
+                sarcC.pCa(active) = splineDrive(gamma.chain_cp, tRel, per);
             otherwise
                 error('makeGammaDrive:badChainMode', ...
                     'Unknown chainMode "%s". Use constant, sine or bspline.', gamma.chainMode);
@@ -116,21 +98,62 @@ if ~isempty(onIdx)
     end
 end
 
-% -- Bag fiber: gamma dynamic (phasic burst) ---------------------------
-if usePctBag
-    baselinePca = ac.actToPcaB(0);              % 0% activation = silent
-    burstPca    = ac.actToPcaB(min(max(gamma.bagBurst_pct/100, 0), 1));
+% -- Bag fiber: gamma dynamic ------------------------------------------
+if isfield(gamma, 'bagMode') && strcmpi(gamma.bagMode, 'bspline')
+    % B-spline (pCa domain), silent until bagOn - same construction as chain.
+    sarcB.pCa = pCaCeil * ones(n, 1);
+    onB = find(t >= gamma.bagOn, 1, 'first');
+    if ~isempty(onB)
+        per = [];
+        if isfield(gamma, 'bag_periodic') && gamma.bag_periodic
+            per = gamma.bag_cyclePeriod;
+        end
+        sarcB.pCa(onB:n) = splineDrive(gamma.bag_cp, t(onB:n) - t(onB), per);
+    end
 else
-    baselinePca = gamma.bagBaseline;
-    burstPca    = gamma.bagBurst;
+    % Phasic burst.
+    if usePctBag
+        baselinePca = ac.actToPcaB(0);              % 0% activation = silent
+        burstPca    = ac.actToPcaB(min(max(gamma.bagBurst_pct/100, 0), 1));
+    else
+        baselinePca = gamma.bagBaseline;
+        burstPca    = gamma.bagBurst;
+    end
+    sarcB.pCa = baselinePca * ones(n, 1);
+    burst = (t >= gamma.bagOn) & (t <= gamma.bagOff);
+    sarcB.pCa(burst) = burstPca;
 end
-sarcB.pCa = baselinePca * ones(n, 1);
-burst = (t >= gamma.bagOn) & (t <= gamma.bagOff);
-sarcB.pCa(burst) = burstPca;
 
 % -- Clamp + silent onset ----------------------------------------------
 sarcB.pCa = min(max(sarcB.pCa, pCaFloor), pCaCeil);
 sarcC.pCa = min(max(sarcC.pCa, pCaFloor), pCaCeil);
 sarcB.pCa(1:min(10, n)) = pCaCeil;
 sarcC.pCa(1:min(10, n)) = pCaCeil;
+end
+
+
+function pCa = splineDrive(cp, tRel, per)
+% 5 control points in pCa, spline-interpolated over time since onset. Two
+% variants:
+%
+%  PERIODIC (per = cycle period) reproduces the manuscript's construction
+%  (getIntrafusal_pCa_Bspline_5cp): points sit at 0/20/40/60/80% of one cycle, a
+%  sixth point repeats the first so the waveform joins up, and the cycle is
+%  tiled across the trial. Use it when the protocol really is cyclic - it ties
+%  every cycle to one waveform, so 5 numbers describe all of them.
+%
+%  FREE (per empty) spreads the same 5 points evenly across the ACTIVE window
+%  with no wrap constraint, so it can express a constant (all points equal), a
+%  ramp (monotonic points) or any smooth shape. Use it for arbitrary protocols,
+%  where a repeating waveform would be meaningless.
+cp = cp(:); tRel = tRel(:);
+if ~isempty(per)
+    ctrlT = linspace(0, 1, numel(cp) + 1)' * per;   % one cycle
+    ctrlV = [cp; cp(1)];                            % last = first
+    pCa   = interp1(ctrlT, ctrlV, mod(tRel, per), 'spline');
+else
+    span  = max(tRel(end), eps);
+    ctrlT = linspace(0, span, numel(cp))';
+    pCa   = interp1(ctrlT, cp, tRel, 'spline');
+end
 end

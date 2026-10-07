@@ -7,12 +7,13 @@ function result = runOptFromData(d, opts)
 %
 %   WHAT IS COMPARED (opts.fitTarget):
 %     'receptor' (DEFAULT) - the model's RECEPTOR POTENTIAL r is fitted to your
-%                 recorded firing rate. That sounds like a units mismatch, but the
-%                 cost is MEAN-NORMALIZED (see meanNormRMSE): each trace is divided
-%                 by its own mean, so only shape is compared and any overall gain
-%                 cancels. Below the spike generator's ceiling firing IS
-%                 proportional to r (rate = r/threshold), so the shapes agree -
-%                 and this keeps the refractory ceiling and the 1/(k*dt) rate
+%                 recorded firing rate, as the manuscript's Figure 1 fits do (see
+%                 rPotentialCost). r is taken ABOVE its no-drive baseline
+%                 mean(r(1:10)) and floored at 0, so it has a true zero like a
+%                 firing rate. That sounds like a units mismatch, but the cost is
+%                 MEAN-NORMALIZED (see meanNormRMSE): each trace is divided by its
+%                 own mean, so only shape is compared and any overall gain
+%                 cancels. This keeps the refractory ceiling and the 1/(k*dt) rate
 %                 quantisation out of the objective entirely.
 %     'firing'  - push the model through integrateAndFire_v2 and fit the model's
 %                 firing rate instead. Same mean-normalized cost. Use this if you
@@ -22,16 +23,20 @@ function result = runOptFromData(d, opts)
 %   See docs/06_your_data.md.
 %
 %   WHAT IS FITTED (8 parameters by default):
-%       x = [ 5 gamma-static B-spline control points (pCa),
-%             bag burst pCa (gamma-dynamic magnitude),
-%             bag burst onset (s), bag burst offset (s) ]
+%       x = [ gamma-static part,  gamma-dynamic part ]
+%     gamma static (opts.gammaStatic):
+%       'bspline-free' (default) / 'bspline-periodic' - 5 control points (pCa)
+%       'constant' - a single level (pCa)
+%     gamma dynamic (opts.gammaDynamic):
+%       'pulse' (default) - bag burst pCa, onset (s), offset (s)
+%       'bspline-free' / 'bspline-periodic' - 5 control points (pCa), the
+%                           manuscript's Figure 1D form
 %   Burst TIMING is fitted here, unlike tutorialOptDemo (the Gamma optimization
-%   tab), which holds it fixed. opts.gammaStatic = 'constant' replaces the 5
-%   control points with a single level, giving a 4-parameter fit.
+%   tab), which holds it fixed.
 %
-%   The gamma-static spline defaults to a NON-periodic one spread across the
-%   trial, so that arbitrary user protocols work; the manuscript's periodic
-%   construction is available as 'bspline-periodic' for genuinely cyclic data.
+%   The splines default to NON-periodic ones spread across the trial, so that
+%   arbitrary user protocols work; the manuscript's periodic construction is
+%   available as 'bspline-periodic' for genuinely cyclic data.
 %
 %   The fascicle length (from the user's length + alpha via the MTU, or their
 %   fascicle trace directly) does not depend on gamma, so it is computed ONCE and
@@ -41,10 +46,12 @@ function result = runOptFromData(d, opts)
 %   .fitTarget ('receptor' | 'firing', default 'receptor'),
 %   .solver ('fmincon' | 'patternsearch', default 'fmincon'),
 %   .gammaStatic ('bspline-free' | 'bspline-periodic' | 'constant', default
-%   'bspline-free'), .cyclePeriod (seconds; REQUIRED for 'bspline-periodic').
+%   'bspline-free'), .gammaDynamic ('pulse' | 'bspline-free' |
+%   'bspline-periodic', default 'pulse'), .cyclePeriod (seconds; REQUIRED if
+%   either drive is 'bspline-periodic').
 %
 %   result fields: .t, .target, .fit0, .fitOpt (on the user grid, in whatever
-%   quantity was fitted), .fitTarget, .fitUnits, .solver, .gammaStatic,
+%   quantity was fitted), .fitTarget, .fitUnits, .solver, .gammaStatic, .gammaDynamic,
 %   .cyclePeriod, .x0, .xOpt, .names, .labels, .history, .fval0, .fvalOpt, and
 %   .gammaOpt (recovered gamma pCa traces for plotting), plus .outOpt (full model
 %   output) and the .fascicle / .alphaAct traces the fit was driven with.
@@ -75,8 +82,14 @@ if ~ismember(gammaStatic, {'bspline-free','bspline-periodic','constant'})
         ['opts.gammaStatic must be ''bspline-free'', ''bspline-periodic'' or ' ...
          '''constant'' (got ''%s'').'], gammaStatic);
 end
+gammaDynamic = lower(getOpt(opts, 'gammaDynamic', 'pulse'));
+if ~ismember(gammaDynamic, {'pulse','bspline-free','bspline-periodic'})
+    error('runOptFromData:badGammaDynamic', ...
+        ['opts.gammaDynamic must be ''pulse'', ''bspline-free'' or ' ...
+         '''bspline-periodic'' (got ''%s'').'], gammaDynamic);
+end
 cyclePeriod = getOpt(opts, 'cyclePeriod', []);
-if strcmp(gammaStatic, 'bspline-periodic') && isempty(cyclePeriod)
+if any(strcmp('bspline-periodic', {gammaStatic, gammaDynamic})) && isempty(cyclePeriod)
     error('runOptFromData:needCyclePeriod', ...
         ['bspline-periodic needs opts.cyclePeriod (seconds per cycle) - the ' ...
          'tutorial will not guess it from your data.']);
@@ -124,17 +137,21 @@ target = movmean(fillmissing(d.targetFiring(:)', 'linear'), smoothWin);
 
     function [sig, out] = modelSignal(x)
         % Returns whichever quantity is being compared, on the user's grid.
-        [sB, sC] = makeGammaDrive(t, gammaFromX(x, t(1), gammaStatic, cyclePeriod), ...
-            sarcB0, sarcC0);
+        [sB, sC] = makeGammaDrive(t, gammaFromX(x, t(1), gammaStatic, gammaDynamic, ...
+            cyclePeriod), sarcB0, sarcC0);
         [~, dB, ~, dC] = sarcSimDriverIntrafusal20250627(t, delta_cdl, sB, sC);
         [r_t, ~, ~, r] = sarc2spindle_20240310(dB, dC, tr.kFc, tr.kFb, tr.kYb, ...
             tr.occlusion, tr.threshold);
         [tf, ifr] = integrateAndFire_v2(r_t, r, 1);
         ok = isfinite(ifr); tf = tf(ok); ifr = ifr(ok);   % 1st spike has no ISI
         if strcmp(fitTarget, 'receptor')
-            % The receptor potential, smoothed the same way the target is, so
-            % the two traces are treated identically before normalization.
-            sig = movmean(interp1(r_t(:), r(:), t, 'linear', 'extrap'), smoothWin);
+            % The receptor potential above its no-drive baseline, floored at 0
+            % (the manuscript's cost - see rPotentialCost; makeGammaDrive keeps
+            % samples 1:10 silent, so mean(r(1:10)) is the no-drive level), then
+            % smoothed the same way the target is, so the two traces are treated
+            % identically before normalization.
+            rS = r(:) - mean(r(1:10)); rS(rS < 0) = 0;
+            sig = movmean(interp1(r_t(:), rS, t, 'linear', 'extrap'), smoothWin);
         elseif isempty(tf)
             sig = zeros(1, n);
         else
@@ -160,12 +177,22 @@ target = movmean(fillmissing(d.targetFiring(:)', 'linear'), smoothWin);
 
 % -- Bounds + start -----------------------------------------------------
 tSpan = [t(1) t(end)];
-bagX0 = [6.0, t(1) + 0.15*(t(end)-t(1)), t(1) + 0.7*(t(end)-t(1))];
-bagLb = [4.5, tSpan(1), tSpan(1)];
-bagUb = [9.0, tSpan(2), tSpan(2)];
-bagNames  = {'bagBurst','bagOn','bagOff'};
-bagLabels = {'Bag burst pCa (\gamma-dynamic)', ...
-             'Bag burst onset (s)','Bag burst offset (s)'};
+if strcmp(gammaDynamic, 'pulse')
+    bagX0 = [6.0, t(1) + 0.15*(t(end)-t(1)), t(1) + 0.7*(t(end)-t(1))];
+    bagLb = [4.5, tSpan(1), tSpan(1)];
+    bagUb = [9.0, tSpan(2), tSpan(2)];
+    bagNames  = {'bagBurst','bagOn','bagOff'};
+    bagLabels = {'Bag burst pCa (\gamma-dynamic)', ...
+                 'Bag burst onset (s)','Bag burst offset (s)'};
+else
+    % Start low and flat: the bag is strong, so little gamma-dynamic is needed.
+    bagX0 = 8.0 * ones(1, nCP);
+    bagLb = 4.5 * ones(1, nCP);
+    bagUb = 9.0 * ones(1, nCP);
+    bagNames  = arrayfun(@(k) sprintf('gd%d', k), 1:nCP, 'UniformOutput', false);
+    bagLabels = arrayfun(@(k) sprintf('\\gamma-dynamic CP%d (pCa)', k), 1:nCP, ...
+                         'UniformOutput', false);
+end
 if strcmp(gammaStatic, 'constant')
     x0 = [6.5, bagX0];  lb = [4.5, bagLb];  ub = [9.0, bagUb];
     names  = [{'chain_pCa'}, bagNames];
@@ -227,25 +254,27 @@ result.fit0 = sig0; result.fitOpt = sigOpt;
 % showing them in raw units would imply an absolute match that was never fitted.
 result.fitTarget = fitTarget;
 result.gammaStatic = gammaStatic;
+result.gammaDynamic = gammaDynamic;
 result.cyclePeriod = cyclePeriod;
 if strcmp(fitTarget, 'receptor')
-    result.fitUnits = 'receptor potential r (mean-normalized)';
+    result.fitUnits = 'receptor potential r above baseline (mean-normalized)';
 else
     result.fitUnits = 'firing rate (mean-normalized)';
 end
 result.x0 = x0; result.xOpt = xOpt; result.names = names; result.labels = labels;
 result.history = history; result.fval0 = fval0; result.fvalOpt = fvalOpt;
 result.gammaOpt = struct('t', t, 'chainPca', oO.pCaC(:), 'bagPca', oO.pCaB(:));
-result.outOpt = runForwardFromData(setGammaData(d, xOpt, ac, gammaStatic, cyclePeriod));  % full output at solution
+result.outOpt = runForwardFromData(setGammaData(d, xOpt, ac, gammaStatic, ...
+    gammaDynamic, cyclePeriod));  % full output at solution
 result.fascicle = fascicle; result.alphaAct = alphaAct;
 end
 
 
 % ======================================================================
-function d2 = setGammaData(d, x, ac, gammaStatic, cyclePeriod)
+function d2 = setGammaData(d, x, ac, gammaStatic, gammaDynamic, cyclePeriod)
 % Build a forward-data struct whose activations equal the optimized gamma, so
 % the full model output can be produced/plotted at the solution.
-g = gammaFromX(x, d.t(1), gammaStatic, cyclePeriod);
+g = gammaFromX(x, d.t(1), gammaStatic, gammaDynamic, cyclePeriod);
 sB = getDefaultSarcB(); sC = getDefaultSarcC();
 [sB, sC] = makeGammaDrive(d.t, g, sB, sC);
 d2 = d;
@@ -253,7 +282,7 @@ d2.chainAct = min(max(ac.pCaToActC(sC.pCa(:))', 0), 1);
 d2.bagAct   = min(max(ac.pCaToActB(sB.pCa(:))', 0), 1);
 end
 
-function g = gammaFromX(x, t0, gammaStatic, cyclePeriod)
+function g = gammaFromX(x, t0, gammaStatic, gammaDynamic, cyclePeriod)
 % Map the fitted vector onto a makeGammaDrive spec. ONE definition, used by the
 % objective and by the final re-simulation, so the drive that is reported can
 % never differ from the one that was scored.
@@ -261,21 +290,29 @@ switch gammaStatic
     case 'constant'
         g = struct('chainMode','constant', 'chain_pCa', x(1), ...
                    'chain_amp',0, 'chain_freq',1, 'chain_phase',0);
-        bag = x(2:4);
+        bag = x(2:end);
     case 'bspline-periodic'
         g = struct('chainMode','bspline', 'chain_cp', x(1:5), ...
                    'chain_periodic', true, 'chain_cyclePeriod', cyclePeriod);
-        bag = x(6:8);
+        bag = x(6:end);
     otherwise   % bspline-free
         g = struct('chainMode','bspline', 'chain_cp', x(1:5), ...
                    'chain_periodic', false);
-        bag = x(6:8);
+        bag = x(6:end);
 end
-g.chainOn     = t0;
-g.bagBaseline = 9;
-g.bagBurst    = bag(1);
-g.bagOn       = bag(2);
-g.bagOff      = bag(3);
+g.chainOn = t0;
+if strcmp(gammaDynamic, 'pulse')
+    g.bagBaseline = 9;
+    g.bagBurst    = bag(1);
+    g.bagOn       = bag(2);
+    g.bagOff      = bag(3);
+else
+    g.bagMode         = 'bspline';
+    g.bag_cp          = bag(1:5);
+    g.bag_periodic    = strcmp(gammaDynamic, 'bspline-periodic');
+    g.bag_cyclePeriod = cyclePeriod;
+    g.bagOn           = t0;
+end
 end
 
 
