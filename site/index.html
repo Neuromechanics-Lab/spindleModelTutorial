@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Muscle Spindle Tutorial</title>
+<meta name="description" content="An interactive app for exploring a biophysical model of the muscle spindle. Watch the video, then download the app for Mac or Windows.">
+<style>
+  :root {
+    --bg: #f7f6f4;
+    --card: #ffffff;
+    --text: #22252b;
+    --muted: #5d6270;
+    --navy: #2e5780;
+    --accent: #3d75a8;
+    --accent-hover: #2f6090;
+    --edge: #e3e5ea;
+    --note-bg: #f1f5fa;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.55 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { color: var(--navy); font-size: 30px; line-height: 1.2; margin: 0 0 6px; }
+  .lede { color: var(--muted); margin: 0 0 28px; }
+  section {
+    background: var(--card);
+    border: 1px solid var(--edge);
+    border-radius: 12px;
+    padding: 22px 22px 24px;
+    margin: 0 0 18px;
+  }
+  h2 { color: var(--navy); font-size: 21px; margin: 0 0 12px; display: flex; align-items: center; gap: 10px; }
+  .num {
+    flex: none; width: 30px; height: 30px; border-radius: 50%;
+    background: var(--accent); color: #fff; font-size: 16px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .video { position: relative; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; background: #000; }
+  .video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .small { font-size: 15px; color: var(--muted); margin: 10px 0 0; }
+  .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .btn {
+    display: block; text-align: center; text-decoration: none;
+    background: var(--accent); color: #fff; border-radius: 10px;
+    padding: 16px 12px; font-weight: 600; font-size: 19px;
+  }
+  .btn:hover, .btn:focus-visible { background: var(--accent-hover); }
+  .btn span { display: block; font-weight: 400; font-size: 14px; opacity: 0.9; margin-top: 2px; }
+  ol { margin: 0; padding-left: 22px; }
+  li { margin: 0 0 8px; }
+  details { border-top: 1px solid var(--edge); padding: 12px 0 0; margin-top: 12px; }
+  details:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+  summary { cursor: pointer; font-weight: 600; color: var(--navy); font-size: 18px; }
+  details > ol { margin-top: 10px; }
+  .note { background: var(--note-bg); border-radius: 8px; padding: 12px 14px; font-size: 15px; margin-top: 14px; }
+  a { color: var(--accent); }
+  footer { color: var(--muted); font-size: 14px; text-align: center; margin-top: 26px; }
+  @media (max-width: 520px) {
+    h1 { font-size: 25px; }
+    .buttons { grid-template-columns: 1fr; }
+    section { padding: 18px 16px 20px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Muscle Spindle Tutorial</h1>
+  <p class="lede">An interactive app for exploring a biophysical model of the muscle
+    spindle. Move a parameter and watch the fiber forces and the sensory signal respond.
+    No MATLAB needed.</p>
+
+  <section>
+    <h2><span class="num">1</span>Watch the tutorial</h2>
+    <div class="video">
+      <iframe src="https://www.youtube-nocookie.com/embed/QONzMklUXoI"
+        title="Modeling the muscle spindle - video tutorial"
+        allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allowfullscreen loading="lazy"></iframe>
+    </div>
+    <p class="small">The video was recorded with an earlier version of the app. It works
+      the same way; a few plots look slightly different.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">2</span>Download the app</h2>
+    <div class="buttons">
+      <a class="btn" href="https://github.com/Neuromechanics-Lab/spindleModelTutorial/releases/latest/download/SpindleTutorialInstaller_mac.zip">
+        Download for Mac<span>Apple M1 or newer</span></a>
+      <a class="btn" href="https://github.com/Neuromechanics-Lab/spindleModelTutorial/releases/latest/download/SpindleTutorialInstaller_win.zip">
+        Download for Windows<span>Windows 10 or 11</span></a>
+    </div>
+    <p class="small"><strong>Older Mac?</strong> If Apple menu &rarr; About This Mac
+      says "Intel", use the
+      <a href="https://github.com/Neuromechanics-Lab/spindleModelTutorial/releases/download/v1.0/SpindleTutorialInstaller_mac.zip">version for Intel Macs</a>
+      instead.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">3</span>Install and open it</h2>
+    <details open>
+      <summary>On a Mac</summary>
+      <ol>
+        <li>Open your <strong>Downloads</strong> folder and double-click the zip file to unzip it.</li>
+        <li><strong>Right-click</strong> SpindleTutorialInstaller and choose <strong>Open</strong>,
+          then click <strong>Open</strong> again. (A normal double-click is blocked the
+          first time, because the app isn't from the App Store.)</li>
+        <li>Follow the installer. It downloads a free component from MathWorks, so it
+          needs the internet and can take a while.</li>
+        <li>To open it, go to <strong>Applications &rarr; Spindle_Tutorial &rarr;
+          application</strong> and double-click <strong>SpindleTutorial</strong>. If macOS
+          warns you, right-click it and choose <strong>Open</strong>. (Tip: drag it to your
+          Dock to find it easily next time.)</li>
+      </ol>
+    </details>
+    <details open>
+      <summary>On Windows</summary>
+      <ol>
+        <li>Open your <strong>Downloads</strong> folder, right-click the zip file and choose
+          <strong>Extract All</strong>.</li>
+        <li><strong>Right-click</strong> SpindleTutorialInstaller and choose
+          <strong>Run as administrator</strong>.</li>
+        <li>If a blue "Windows protected your PC" box appears, click
+          <strong>More info</strong>, then <strong>Run anyway</strong>.</li>
+        <li>Follow the installer. It downloads a free component from MathWorks, so it
+          needs the internet and can take a while.</li>
+        <li>The installer offers to add a <strong>desktop shortcut</strong>: tick it, then
+          open Spindle Tutorial from your desktop. (Otherwise it's in the folder the
+          installer showed you, inside <strong>application</strong>.)</li>
+      </ol>
+    </details>
+    <div class="note">The first time you open it, the app can take a minute to start.
+      After that it's quicker.</div>
+  </section>
+
+  <section>
+    <h2><span class="num">?</span>Have MATLAB?</h2>
+    <p style="margin:0">You can run it from the source code instead, which also includes
+      tools for fitting the model to your own data. See the
+      <a href="https://github.com/Neuromechanics-Lab/spindleModelTutorial">project on GitHub</a>.</p>
+  </section>
+
+  <footer>
+    Surabhi Simha &middot; <a href="https://github.com/Neuromechanics-Lab">Neuromechanics Lab</a>, Emory University<br>
+    Model: <a href="https://doi.org/10.64898/2026.07.03.736206">Simha et al. (2026)</a>
+  </footer>
+</main>
+</body>
+</html>

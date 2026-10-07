@@ -15,7 +15,7 @@ authors:
   - family-names: Simha
     given-names: Surabhi N.
     affiliation: "Neuromechanics Lab, Emory University"
-repository-code: "https://github.com/SurabhiSimha/spindleModelTutorial"
+repository-code: "https://github.com/Neuromechanics-Lab/spindleModelTutorial"
 license: AGPL-3.0-or-later
 version: "1.1"
 date-released: "2026-10-07"

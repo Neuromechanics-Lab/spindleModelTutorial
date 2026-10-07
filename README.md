@@ -5,8 +5,9 @@ model of [Simha et al. (2026)](https://doi.org/10.64898/2026.07.03.736206). Move
 a parameter and immediately see how fiber forces, the Ia receptor potential, and
 the cross-bridge distribution respond — then fit the model to your own data.
 
-**No MATLAB?** Download a prebuilt app for macOS or Windows from the
-[latest release](../../releases/latest).
+**No MATLAB?** The [download page](https://neuromechanics-lab.github.io/spindleModelTutorial/)
+has the video and the Mac and Windows apps, with step-by-step install
+instructions. (The same apps are on the [latest release](../../releases/latest).)
 
 **Video tutorial:** [watch the walkthrough on YouTube](https://www.youtube.com/watch?v=QONzMklUXoI).
 
@@ -16,6 +17,10 @@ The video walks through v1.0. Later versions work the same way, with the same
 tabs, steps and controls. v1.1 updated the bag activation curve and lowered the
 default gamma drive, so some traces look a little different from the recording.
 For example, the walkthrough's predicted firing no longer sits at its ceiling.
+The video also shows this repository at its old address,
+github.com/SurabhiSimha/spindleModelTutorial. It now lives under
+[Neuromechanics-Lab](https://github.com/Neuromechanics-Lab), and the old links
+still work: they bring you here.
 
 **Author:** Surabhi Simha · Neuromechanics Lab, Emory University
 

@@ -18,7 +18,7 @@ For example, the walkthrough's predicted firing no longer sits at its ceiling.
 
 **Older Intel Mac?** (Apple menu → About This Mac shows "Intel".) This version
 won't run on it — use the
-[v1.0 Mac installer](https://github.com/SurabhiSimha/spindleModelTutorial/releases/download/v1.0/SpindleTutorialInstaller_mac.zip)
+[v1.0 Mac installer](https://github.com/Neuromechanics-Lab/spindleModelTutorial/releases/download/v1.0/SpindleTutorialInstaller_mac.zip)
 instead. It has the same tutorial content.
 
 ### Installing
@@ -78,7 +78,7 @@ fit the model to **your own** recordings. The standalone app does not include it
 Either clone the repository:
 
 ```bash
-git clone https://github.com/SurabhiSimha/spindleModelTutorial.git
+git clone https://github.com/Neuromechanics-Lab/spindleModelTutorial.git
 cd spindleModelTutorial
 ```
 
@@ -95,7 +95,7 @@ launchSpindleGUI          % pick Interactive Tutorial (Learn) or Analysis Toolki
 Optimization** (for `patternsearch`) and benefits from **Parallel Computing**.
 
 How this tutorial's workflow differs from the published pipeline is listed in
-[docs/07](https://github.com/SurabhiSimha/spindleModelTutorial/blob/main/docs/07_differences_from_manuscript.md).
+[docs/07](https://github.com/Neuromechanics-Lab/spindleModelTutorial/blob/main/docs/07_differences_from_manuscript.md).
 
 ## Citation
 
