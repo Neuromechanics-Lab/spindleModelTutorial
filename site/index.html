@@ -16,6 +16,23 @@
     --accent-hover: #2f6090;
     --edge: #e3e5ea;
     --note-bg: #f1f5fa;
+    --link: #3d75a8;
+    color-scheme: light dark;
+  }
+  /* Follow the computer's dark mode. */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181d;
+      --card: #1f2229;
+      --text: #e6e8ec;
+      --muted: #a3a9b6;
+      --navy: #8db8e3;
+      --accent: #3d75a8;
+      --accent-hover: #4b86bb;
+      --edge: #30343d;
+      --note-bg: #252a33;
+      --link: #8db8e3;
+    }
   }
   * { box-sizing: border-box; }
   body {
@@ -58,7 +75,7 @@
   summary { cursor: pointer; font-weight: 600; color: var(--navy); font-size: 18px; }
   details > ol { margin-top: 10px; }
   .note { background: var(--note-bg); border-radius: 8px; padding: 12px 14px; font-size: 15px; margin-top: 14px; }
-  a { color: var(--accent); }
+  a { color: var(--link); }
   footer { color: var(--muted); font-size: 14px; text-align: center; margin-top: 26px; }
   @media (max-width: 520px) {
     h1 { font-size: 25px; }
