@@ -499,7 +499,6 @@ classdef SpindleLearnApp < SpindleAppBase
                 xline(ax, 0, ':', 'Color', s.muted);
                 hold(ax, 'off');
                 xlabel(ax, 'cross-bridge displacement x (nm)'); ylabel(ax, 'bound fraction');
-                legend(ax, {'bag','chain'}, 'Location', 'best', 'FontSize', 8);
                 obj.distHandles = [hB hC];
                 obj.beautify(ax.Parent);
                 obj.tagAxes(ax, 'intermediate');
@@ -509,7 +508,9 @@ classdef SpindleLearnApp < SpindleAppBase
             end
             ymax = max([yB; yC; 1e-3]);
             ylim(ax, [0 1.1 * ymax]);
-            title(ax, sprintf('Cross-bridge distribution @ t = %.3f s', out.t(idx)), 'Color', s.navy);
+            obj.keyTitle(ax, sprintf('Cross-bridge distribution @ t = %.3f s', out.t(idx)), ...
+                {'bag', s.bag; 'chain', s.chain});
+            ax.Title.Color = s.navy;
             obj.pgScrubLabel.Text = sprintf('Cross-bridge distribution time = %.3f s (drag to scrub)', out.t(idx));
         end
 

@@ -196,12 +196,23 @@ classdef SpindleAppBase < handle
         % ================================================================
         %  PER-SIGNAL PLOT HELPERS (shared by both apps)
         % ================================================================
+        function keyTitle(~, ax, txt, items)
+            % Title plus a second line naming each trace in its own colour, used
+            % INSTEAD of a legend everywhere. In these panels 'best' put legends
+            % over the traces (badly on Windows, where text renders larger), and
+            % an 'outside' legend is clipped because each axes fills its panel.
+            % A key in the title can never cover the data. items: {label, rgb}.
+            key = cellfun(@(lab, c) sprintf('\\color[rgb]{%.2f,%.2f,%.2f}%s', c, lab), ...
+                items(:,1), items(:,2), 'UniformOutput', false);
+            title(ax, {txt, strjoin(key', '    ')});
+        end
+
         function axLength(obj, ax, out)
             s = obj.S;
             plot(ax, out.t, out.mt.mtuCmd, ':', 'Color', s.muted, 'LineWidth', s.lwThin); hold(ax, 'on');
             plot(ax, out.t, out.L, 'Color', s.total, 'LineWidth', s.lw); hold(ax, 'off');
-            ylabel(ax, 'length (nm)'); title(ax, 'Length');
-            legend(ax, {'MTU command','fascicle'}, 'Location', 'best');
+            ylabel(ax, 'length (nm)');
+            obj.keyTitle(ax, 'Length', {'MTU command (dotted)', s.muted; 'fascicle', s.total});
             obj.padY(ax, [out.mt.mtuCmd(:); out.L(:)]); xlim(ax, [out.t(1) out.t(end)]);
             obj.tagAxes(ax, 'input');
         end
@@ -211,11 +222,11 @@ classdef SpindleAppBase < handle
             plot(ax, out.t, 100*out.actAlpha, 'Color', s.alpha, 'LineWidth', s.lw); hold(ax, 'on');
             plot(ax, out.t, 100*out.actC, 'Color', s.chain, 'LineWidth', s.lw);
             plot(ax, out.t, 100*out.actB, 'Color', s.bag, 'LineWidth', s.lw); hold(ax, 'off');
-            ylabel(ax, 'activation (%)'); title(ax, 'Activation');
+            ylabel(ax, 'activation (%)');
             % Naming convention throughout the apps and docs: the anatomical name
             % first, the Greek drive it carries in brackets.
-            legend(ax, {'extrafusal (\alpha)','chain (\gamma-static)','bag (\gamma-dynamic)'}, ...
-                'Location', 'best');
+            obj.keyTitle(ax, 'Activation', {'extrafusal (\alpha)', s.alpha; ...
+                'chain (\gamma-static)', s.chain; 'bag (\gamma-dynamic)', s.bag});
             obj.padY(ax, 100*[out.actAlpha(:); out.actC(:); out.actB(:)]); xlim(ax, [out.t(1) out.t(end)]);
             obj.tagAxes(ax, 'input');
         end
@@ -226,8 +237,8 @@ classdef SpindleAppBase < handle
             hold(ax, 'on');
             plot(ax, out.t, out.chain.hs_force, 'Color', s.chain, 'LineWidth', s.lw);
             hold(ax, 'off');
-            ylabel(ax, 'force (N m^{-2})'); title(ax, 'Fiber force');
-            legend(ax, {'bag','chain'}, 'Location', 'best');
+            ylabel(ax, 'force (N m^{-2})');
+            obj.keyTitle(ax, 'Fiber force', {'bag', s.bag; 'chain', s.chain});
             obj.padY(ax, [out.bag.hs_force(:); out.chain.hs_force(:)]); xlim(ax, [out.t(1) out.t(end)]);
             obj.tagAxes(ax, 'intermediate');
         end
@@ -237,8 +248,9 @@ classdef SpindleAppBase < handle
             plot(ax, out.r_t, out.rs, 'Color', s.chain, 'LineWidth', s.lwThin); hold(ax, 'on');
             plot(ax, out.r_t, out.rd, 'Color', s.bag, 'LineWidth', s.lwThin);
             plot(ax, out.r_t, out.r, 'Color', s.total, 'LineWidth', s.lwThick); hold(ax, 'off');
-            ylabel(ax, 'r (a.u.)'); title(ax, 'Ia receptor potential');
-            legend(ax, {'r_s (static)','r_d (dynamic)','r (total)'}, 'Location', 'best');
+            ylabel(ax, 'r (a.u.)');
+            obj.keyTitle(ax, 'Ia receptor potential', {'r_s (static)', s.chain; ...
+                'r_d (dynamic)', s.bag; 'r (total)', s.total});
             obj.padY(ax, [out.rs(:); out.rd(:); out.r(:)]); xlim(ax, [out.t(1) out.t(end)]);
             obj.tagAxes(ax, 'output');
         end

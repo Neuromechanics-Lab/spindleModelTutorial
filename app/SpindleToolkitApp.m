@@ -236,10 +236,7 @@ classdef SpindleToolkitApp < SpindleAppBase
             % The scored window's edges, as two dotted verticals in one line.
             obj.optFitLines.win  = plot(ax, NaN, NaN, ':', 'Color', obj.S.muted, 'LineWidth', 1.2);
             hold(ax, 'off');
-            % No legends on this tab: in these small plots 'best' put them over
-            % the traces (worse on Windows, where text renders larger), and an
-            % 'outside' legend is clipped because the axes fills its panel. Each
-            % title carries a colour key instead (see keyTitle). The CP markers
+            % Colour key in the title, not a legend (see keyTitle). The CP markers
             % and the dotted scored-window edges are explained in the note.
             obj.keyTitle(ax, 'Target Ia vs model fit  (press Run optimization)', ...
                 {'target (truth)', obj.S.total; 'initial guess (dashed)', obj.S.bag; ...
@@ -306,14 +303,6 @@ classdef SpindleToolkitApp < SpindleAppBase
             catch ME
                 obj.optStatus.Text = ['Could not preview the target drive: ' ME.message];
             end
-        end
-
-        function keyTitle(~, ax, txt, items)
-            % Title plus a second line naming each trace in its own colour - a
-            % legend that can never sit on top of the data. items: {label, rgb}.
-            key = cellfun(@(lab, c) sprintf('\\color[rgb]{%.2f,%.2f,%.2f}%s', c, lab), ...
-                items(:,1), items(:,2), 'UniformOutput', false);
-            title(ax, {txt, strjoin(key', '    ')});
         end
 
         function opts = trueDriveOpts(obj, ac)
@@ -815,11 +804,13 @@ classdef SpindleToolkitApp < SpindleAppBase
             plot(axFit, res.t, nrm(res.fit0), '--', 'Color', obj.S.tagOutput, 'LineWidth', obj.S.lwThin);
             plot(axFit, res.t, nrm(res.fitOpt), 'Color', obj.S.green, 'LineWidth', obj.S.lw); hold(axFit, 'off');
             if strcmp(res.fitTarget, 'receptor')
-                title(axFit, 'Your Ia firing vs model receptor potential (shape)');
-                legend(axFit, {'your firing','initial guess (r)','optimized fit (r)'}, 'Location', 'best');
+                obj.keyTitle(axFit, 'Your Ia firing vs model receptor potential (shape)', ...
+                    {'your firing', obj.S.muted; 'initial guess (r, dashed)', obj.S.tagOutput; ...
+                     'optimized fit (r)', obj.S.green});
             else
-                title(axFit, 'Your Ia firing vs model firing (shape)');
-                legend(axFit, {'your firing','initial guess','optimized fit'}, 'Location', 'best');
+                obj.keyTitle(axFit, 'Your Ia firing vs model firing (shape)', ...
+                    {'your firing', obj.S.muted; 'initial guess (dashed)', obj.S.tagOutput; ...
+                     'optimized fit', obj.S.green});
             end
             ylabel(axFit, 'mean-normalized');
             obj.padY(axFit, [nrm(res.target)'; nrm(res.fitOpt)']); xlim(axFit, [res.t(1) res.t(end)]);
@@ -835,7 +826,9 @@ classdef SpindleToolkitApp < SpindleAppBase
             % res.outOpt already carries the recovered gamma as actC/actB,
             % because it was re-simulated at the solution.
             obj.axActivation(a(3), res.outOpt);
-            title(a(3), 'Activation:  \alpha as given,  \gamma RECOVERED');
+            obj.keyTitle(a(3), 'Activation:  \alpha as given,  \gamma RECOVERED', ...
+                {'extrafusal (\alpha)', obj.S.alpha; 'chain (\gamma-static)', obj.S.chain; ...
+                 'bag (\gamma-dynamic)', obj.S.bag});
 
             % Cost vs iteration (from the recorded history)
             axCost = a(4);
