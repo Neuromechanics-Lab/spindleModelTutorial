@@ -8,6 +8,15 @@ the cross-bridge distribution respond — then fit the model to your own data.
 **No MATLAB?** Download a prebuilt app for macOS or Windows from the
 [latest release](../../releases/latest).
 
+**Video tutorial:** [watch the walkthrough on YouTube](https://www.youtube.com/watch?v=QONzMklUXoI).
+
+[![Video tutorial](https://img.youtube.com/vi/QONzMklUXoI/hqdefault.jpg)](https://www.youtube.com/watch?v=QONzMklUXoI)
+
+The video walks through v1.0. Later versions work the same way, with the same
+tabs, steps and controls. v1.1 updated the bag activation curve and lowered the
+default gamma drive, so some traces look a little different from the recording.
+For example, the walkthrough's predicted firing no longer sits at its ceiling.
+
 **Author:** Surabhi Simha · Neuromechanics Lab, Emory University
 
 ---

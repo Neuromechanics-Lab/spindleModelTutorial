@@ -3,6 +3,12 @@
 Interactive companion to the biophysical muscle spindle model of
 [Simha et al. (2026, bioRxiv)](https://doi.org/10.64898/2026.07.03.736206).
 
+**Video tutorial:** [watch the walkthrough on YouTube](https://www.youtube.com/watch?v=QONzMklUXoI).
+The video walks through v1.0. Later versions work the same way, with the same
+tabs, steps and controls. v1.1 updated the bag activation curve and lowered the
+default gamma drive, so some traces look a little different from the recording.
+For example, the walkthrough's predicted firing no longer sits at its ceiling.
+
 ## Downloads — no MATLAB needed
 
 | File | Platform | Runtime it fetches |
