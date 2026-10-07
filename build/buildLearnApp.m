@@ -44,6 +44,16 @@ if ~isempty(absent)
         strjoin(unique(absent), ', '));
 end
 
+% A Mac build is native only to the architecture of the MATLAB that compiles it.
+% Before R2023b MATLAB was Intel-only ('maci64'), so its apps run under Rosetta
+% on Apple silicon - slowly. Build from an Apple silicon MATLAB ('maca64').
+if strcmp(computer('arch'), 'maci64')
+    warning('buildLearnApp:intelMac', ...
+        ['This MATLAB is Intel (maci64): the app will run under Rosetta, slowly, ', ...
+         'on Apple silicon Macs. Build from MATLAB R2023b+ for Apple silicon ', ...
+         '(computer(''arch'') = ''maca64'') instead.']);
+end
+
 entry   = fullfile(root, 'launchLearnAppDeployed.m');
 dataMat = fullfile(root, 'data', 'ActCurveSim120240819.mat');
 figPng  = fullfile(root, 'data', 'spindleModelFig.png');

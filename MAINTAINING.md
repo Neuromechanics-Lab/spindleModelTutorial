@@ -68,6 +68,15 @@ alive); the activation-curve `.mat`, the overview figure, and the model function
 are bundled automatically. The script also packages an **installer** that fetches
 the free Runtime at install time.
 
+### Building for macOS
+
+Build from a MATLAB that runs **natively on Apple silicon** — R2023b or later,
+where `computer('arch')` returns `'maca64'`. The compiled app has the
+architecture of the MATLAB that built it: v1.0 was built from R2022b (Intel
+only), so on M-series Macs it ran under Rosetta and was noticeably slow.
+`buildLearnApp` warns if you build from an Intel MATLAB. An Apple-silicon build
+does not run on Intel Macs.
+
 ### Building for Windows
 
 The compiler emits a **native binary for whatever OS you build on** — there is no
@@ -112,7 +121,10 @@ Prebuilt installers for **macOS** and **Windows** are attached to the
 are *web* installers: small, because they fetch the free MATLAB Runtime during
 installation (so you need internet once; the Runtime version is pinned per
 build). Neither is code-signed, so on first launch use **right-click → Open**
-(macOS) or **More info → Run anyway** (Windows).
+(macOS) or **More info → Run anyway** (Windows). On Windows the *installer* must
+be run as administrator (it installs the Runtime); the app itself does not. On
+macOS, move the app into Applications before first opening it — run from
+Downloads, an unsigned app can open from a read-only location.
 
 > **Do not commit installers.** Binaries stay in git history permanently and
 > bloat every future clone. `.gitignore` excludes `dist/`, `*.zip`, and

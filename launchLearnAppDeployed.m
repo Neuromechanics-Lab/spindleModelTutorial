@@ -27,6 +27,11 @@ end
 
 app = SpindleLearnApp();
 
+% The window opens on the Overview, so pay the one-time warm-up cost (~7s,
+% see SpindleAppBase.doWarmup) while the user reads it, not on their first
+% walkthrough step.
+SpindleAppBase.startWarmup(app.UIFigure);
+
 % Keep the (compiled) process running until the user closes the window.
 try
     uiwait(app.UIFigure);

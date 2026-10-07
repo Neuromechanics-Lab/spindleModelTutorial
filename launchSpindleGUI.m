@@ -29,6 +29,7 @@ s = SpindleAppBase.sty();
 
 f = uifigure('Name', 'Muscle Spindle Model', 'Position', [200 250 520 380], ...
     'Color', s.canvasApp, 'Resize', 'off');
+SpindleAppBase.lockLightTheme(f);
 g = uigridlayout(f, [4 1]);
 g.RowHeight = {'fit', 'fit', '1x', '1x'};
 g.Padding = [24 20 24 18]; g.RowSpacing = 12; g.BackgroundColor = s.canvasApp;
@@ -53,52 +54,7 @@ b2.Tooltip = 'Gamma optimization + Your data - fit the model to data.';
 
 % Warm the model up in the background so the first real simulation is fast.
 % This is silent: an internal speed-up, not something the reader needs to see.
-startWarmup(f);
+SpindleAppBase.startWarmup(f);
 
 if nargout > 0, fig = f; end
-end
-
-
-% ======================================================================
-function startWarmup(f)
-% Run a tiny simulation shortly after the launcher appears. This forces MATLAB
-% to just-in-time compile the model functions (the dominant one-time cost) while
-% the user is still reading the menu, rather than on their first real run.
-tmr = timer('StartDelay', 0.4, 'ExecutionMode', 'singleShot', 'BusyMode', 'drop', ...
-    'TimerFcn', @(~,~) doWarmup(f), ...
-    'StopFcn',  @(tm,~) delete(tm));
-% If the launcher is closed first, stop the timer so its callback can't fire.
-f.DeleteFcn = @(~,~) safeStop(tmr);
-start(tmr);
-end
-
-function doWarmup(~)
-% The one-time cold costs are (measured): the compute just-in-time compile (~2s),
-% the first uiaxes plot (~4-5s) and the first uihtml render (~3s). Pay them all
-% here, on a throwaway off-screen figure, so the real windows feel instant.
-try
-    p = defaultTutorialParams();
-    p.sim.tEnd = 0.5;               % short run: JIT-warms the whole compute pipeline
-    out = tutorialForwardSim(p);    % MTU + intrafusal + receptor potential + firing
-
-    wf = uifigure('Visible', 'off');   % warm the graphics rendering path
-    cln = onCleanup(@() delete(wf));
-    wg = uigridlayout(wf, [2 1]);
-    wax = uiaxes(wg); wax.Layout.Row = 1;
-    plot(wax, out.t, out.r); area(wax, out.x_bins, out.bag.bin_pops(:, end));  %#ok<*NASGU>
-    wh = uihtml(wg); wh.Layout.Row = 2; wh.HTMLSource = '<b>warm</b>';
-    drawnow;
-    clear cln
-catch
-    % Warmup is only an optimization; ignore any failure silently.
-end
-% (Silent by design - the warm-up is an internal speed-up, not something the
-% reader needs to know about. Leave the status line blank.)
-end
-
-function safeStop(tmr)
-try
-    if isvalid(tmr), stop(tmr); delete(tmr); end
-catch
-end
 end

@@ -24,6 +24,7 @@ classdef SpindleAppBase < handle
             obj.S = SpindleAppBase.sty();
             obj.UIFigure = uifigure('Name', name, ...
                 'Position', [80 80 1240 820], 'Color', [1 1 1]);
+            SpindleAppBase.lockLightTheme(obj.UIFigure);
             outer = uigridlayout(obj.UIFigure, [1 1]);
             outer.Padding = [6 6 6 6];
             obj.TabGroup = uitabgroup(outer);
@@ -291,6 +292,62 @@ classdef SpindleAppBase < handle
             ax.Units = 'pixels';
             ax.Units = 'normalized';
             ax.Position = [0 0 1 1];
+        end
+
+        function lockLightTheme(fig)
+            % From R2025a, figures follow the OS dark/light setting. This palette
+            % is light-only, and some components set their colors explicitly
+            % while others take them from the theme - so under a dark OS theme
+            % text came out light-on-light (reported on Windows). Pin the light
+            % theme. Older releases have no themes and need nothing.
+            if isprop(fig, 'Theme')
+                try
+                    theme(fig, 'light');
+                catch
+                end
+            end
+        end
+
+        function startWarmup(f)
+            % Run a tiny simulation shortly after window f appears. This forces
+            % MATLAB to just-in-time compile the model functions (the dominant
+            % one-time cost) while the user is still reading, rather than on
+            % their first real run. Stopped if f is closed first.
+            tmr = timer('StartDelay', 0.4, 'ExecutionMode', 'singleShot', 'BusyMode', 'drop', ...
+                'TimerFcn', @(~,~) SpindleAppBase.doWarmup(), ...
+                'StopFcn',  @(tm,~) delete(tm));
+            addlistener(f, 'ObjectBeingDestroyed', @(~,~) SpindleAppBase.safeStop(tmr));
+            start(tmr);
+        end
+
+        function doWarmup()
+            % The one-time cold costs are (measured): the compute just-in-time
+            % compile (~2s), the first uiaxes plot (~4-5s) and the first uihtml
+            % render (~3s). Pay them all here, on a throwaway off-screen figure,
+            % so the real windows feel instant. Silent by design.
+            try
+                p = defaultTutorialParams();
+                p.sim.tEnd = 0.5;               % short run: JIT-warms the whole compute pipeline
+                out = tutorialForwardSim(p);    % MTU + intrafusal + receptor potential + firing
+
+                wf = uifigure('Visible', 'off');   % warm the graphics rendering path
+                cln = onCleanup(@() delete(wf));
+                wg = uigridlayout(wf, [2 1]);
+                wax = uiaxes(wg); wax.Layout.Row = 1;
+                plot(wax, out.t, out.r); area(wax, out.x_bins, out.bag.bin_pops(:, end));
+                wh = uihtml(wg); wh.Layout.Row = 2; wh.HTMLSource = '<b>warm</b>';
+                drawnow;
+                clear cln
+            catch
+                % Warmup is only an optimization; ignore any failure silently.
+            end
+        end
+
+        function safeStop(tmr)
+            try
+                if isvalid(tmr), stop(tmr); delete(tmr); end
+            catch
+            end
         end
 
         function s = sty()
