@@ -27,7 +27,7 @@ function fig = launchSpindleGUI()
 setupTutorialPaths();
 s = SpindleAppBase.sty();
 
-f = uifigure('Name', 'Muscle Spindle Model', 'Position', [200 250 520 380], ...
+f = uifigure('Name', 'Muscle Spindle Model', 'Position', SpindleAppBase.fitToScreen(520, 380), ...
     'Color', s.canvasApp, 'Resize', 'off');
 SpindleAppBase.lockLightTheme(f);
 g = uigridlayout(f, [4 1]);

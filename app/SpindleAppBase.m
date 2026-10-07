@@ -23,7 +23,7 @@ classdef SpindleAppBase < handle
             % Create the app window + tab group, and load the shared palette.
             obj.S = SpindleAppBase.sty();
             obj.UIFigure = uifigure('Name', name, ...
-                'Position', [80 80 1240 820], 'Color', [1 1 1]);
+                'Position', SpindleAppBase.fitToScreen(1240, 820), 'Color', [1 1 1]);
             SpindleAppBase.lockLightTheme(obj.UIFigure);
             outer = uigridlayout(obj.UIFigure, [1 1]);
             outer.Padding = [6 6 6 6];
@@ -292,6 +292,20 @@ classdef SpindleAppBase < handle
             ax.Units = 'pixels';
             ax.Units = 'normalized';
             ax.Position = [0 0 1 1];
+        end
+
+        function pos = fitToScreen(w, h)
+            % A [x y w h] window position: w-by-h shrunk to fit the screen, then
+            % centred. A fixed position put the title bar above the top of a
+            % Windows laptop screen - at 150% display scaling a 1080p screen is
+            % only 720 px tall to MATLAB - so the window could not be moved.
+            % The margins leave room for the title bar and the taskbar/Dock.
+            scr = get(groot, 'ScreenSize');      % [left bottom width height]
+            w = min(w, scr(3) - 40);
+            h = min(h, scr(4) - 110);
+            x = scr(1) + round((scr(3) - w) / 2);
+            y = scr(2) + max(60, round((scr(4) - h) / 2));
+            pos = [x y w h];
         end
 
         function lockLightTheme(fig)

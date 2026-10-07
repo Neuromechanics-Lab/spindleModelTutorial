@@ -454,6 +454,10 @@ classdef SpindleLearnApp < SpindleAppBase
                 end
                 obj.distHandles = [];   % force a rebuild for the new sim
                 obj.updateDistPlot(obj.pgScrub.Value);
+                % In a short window the axes are laid out before their panels
+                % settle, and overflow them (titles cut off). Re-fit once drawn.
+                drawnow;
+                obj.onFigureResized();
                 if out.mt.ok
                     obj.pgStatus.Text = '';
                 else

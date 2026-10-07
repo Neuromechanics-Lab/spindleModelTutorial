@@ -68,7 +68,14 @@ if ~isfolder(outDir), mkdir(outDir); end
 
 fprintf('Compiling %s\n  -> %s\n', entry, outDir);
 
-results = compiler.build.standaloneApplication(entry, ...
+% On Windows, standaloneApplication makes a console program, which opens a
+% command window behind the app for as long as it runs. A windowed app has none.
+if ispc
+    buildFcn = @compiler.build.standaloneWindowsApplication;
+else
+    buildFcn = @compiler.build.standaloneApplication;
+end
+results = buildFcn(entry, ...
     'ExecutableName',    'SpindleTutorial', ...
     'OutputDir',         outDir, ...
     'AdditionalFiles',   {dataMat, figPng}, ... % activation curve + overview figure
