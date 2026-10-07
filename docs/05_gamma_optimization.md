@@ -27,6 +27,12 @@ refers to that grid-plus-search structure, not to mixing solvers: `fmincon` is
 not part of it. In the real project the target is experimental Ia data
 (Taylor et al.).
 
+The tutorial's demo defaults to **`fmincon`** instead, with `patternsearch` on
+its **Solver** dropdown. The receptor-potential cost is smooth, and on it fmincon
+reaches a much lower cost on the demo's budget (0.022 against 0.115 for the burst
+fit) in about half the time. See
+[07_differences_from_manuscript.md](07_differences_from_manuscript.md).
+
 ## What the tutorial actually runs
 
 The **Gamma optimization** tab calls the manuscript's *own* functions —
@@ -100,11 +106,13 @@ workflow, not as evidence about identifiability.
   manuscript handles with the outer grid / multi-start.
 - **Phase** moves little in a short run; a longer simulation horizon (more gait
   cycles) gives it more to work with.
-- Each objective evaluation runs the full model, so a fit takes a couple of
-  minutes. Ticking **Use parallel** (on by default) spreads `patternsearch`'s 2N
-  poll points across workers — 86 s down to 57 s for the burst fit and 134 s
-  down to 59 s for the B-spline one, after a one-off ~35 s pool startup. Needs the Parallel Computing Toolbox; timings are
-  tabulated in [07_differences_from_manuscript.md](07_differences_from_manuscript.md).
+- Each objective evaluation runs the full model, so a fit takes ~1 min (burst)
+  or ~2 min (B-spline) with fmincon. With patternsearch, ticking **Use
+  parallel** spreads its 2N poll points across workers — 86 s down to 57 s for
+  the burst fit and 134 s down to 59 s for the B-spline one, after a one-off
+  ~30 s pool startup. It does not speed up fmincon, so it is off by default.
+  Needs the Parallel Computing Toolbox; timings are tabulated in
+  [07_differences_from_manuscript.md](07_differences_from_manuscript.md).
 
 ## Mapping back to the real project
 
@@ -113,5 +121,5 @@ workflow, not as evidence about identifiability.
 | `tutorialForwardSim` / `runExtrafusalMTU` | `runSpindleSimForGammaFwdSim`, `getExtrafusalConstMTU` |
 | `tutorialOptDemo` (calls the real B-spline sim) | `runSpindleSimForOpt_Bspline_5cp`, `getIntrafusal_pCa_Bspline_5cp` (and the `_gDynBspline` versions) |
 | objective (`rPotentialCost`) | `objFuncWithFixedTiming_Bspline_5cp_rPotential`, `objFuncWithFixedPhase_Bspline_5cp_gDynBspline_rPotential` |
-| `patternsearch` loop (single pass, timing fixed) | `hybridOptimizationGammaDrive_Bspline_5cp_grid_rPotential` (82 fits over a timing grid), `hybridOptimizationGammaDrive_gDynBspline_grid_rPotential` (16 grid nodes + 16-start polish) |
+| `fmincon` (default) or `patternsearch` loop (single pass, timing fixed) | `hybridOptimizationGammaDrive_Bspline_5cp_grid_rPotential` (82 fits over a timing grid), `hybridOptimizationGammaDrive_gDynBspline_grid_rPotential` (16 grid nodes + 16-start polish) |
 | simulated target | experimental Ia data (Taylor et al.) |

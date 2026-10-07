@@ -31,7 +31,6 @@ Figure 1D), `objFuncWithFixedTiming_Bspline_5cp_rPotential.m` — and
 | pCa bounds | 4.5 – 9.0 |
 | Bag baseline | `initial_pCa = 9` |
 | Cost | receptor potential above its no-drive baseline `mean(r(1:10))`, floored at 0, then mean-normalized RMSE (each trace ÷ its own mean) — `rPotentialCost`. The manuscript also divides by 100; cost values here are 100× its printed ones |
-| Solver (gamma demo) | `patternsearch` — the manuscript uses it throughout, with no `fmincon` stage |
 
 ## Different
 
@@ -102,9 +101,15 @@ cycle, and does not fit a phase term — in a free spline the phase is redundant
 with the control points, and in the periodic variant the cycle is anchored at the
 start of the data.
 
-### 5. Solver settings
-The gamma-optimization demo uses `patternsearch`, as the manuscript does (the
-Your-data tab defaults to `fmincon` instead — see below). The settings differ:
+### 5. Solver
+**Manuscript:** `patternsearch` throughout, with no `fmincon` stage.
+**Tutorial:** both tabs default to `fmincon` (sqp), with `patternsearch` on the
+**Solver** dropdown. The manuscript chose patternsearch, derivative-free, when it
+fitted firing rate, whose cost is stepped because the spike generator quantises
+the rate. The receptor-potential cost is smooth, and on it fmincon does far
+better on the demo's budget — see the run-time section below.
+
+When you pick patternsearch, its settings still differ from the manuscript's:
 
 | | manuscript | tutorial |
 |---|---|---|
@@ -136,24 +141,23 @@ gamma slider ~1.3 s. The two fits in the Analysis Toolkit take minutes:
 
 | Fit | Time | Configuration |
 |---|---|---|
-| Gamma optimization | **57 s** | patternsearch, 25 iterations, parallel (on by default), burst γ-dynamic |
-| — same, serial | 86 s | without the Parallel Computing Toolbox |
-| — B-spline γ-dynamic | 59 s parallel, 134 s serial | 11 parameters |
+| Gamma optimization | **~50 s** | fmincon (default), 25 iterations, burst γ-dynamic; cost 0.256 → 0.022 |
+| — B-spline γ-dynamic | ~2 min | fmincon, 11 parameters; cost 0.771 → 0.047 |
+| — patternsearch | 86 s serial, 57 s parallel | burst; cost 0.256 → 0.115 |
+| — patternsearch, B-spline | 134 s serial, 59 s parallel | cost 0.772 → 0.258 |
 | Your data, optimize | **~62 s** | fmincon, 8 parameters, fitting the receptor potential |
 
-Parallel is worth 1.5× on the burst fit and 2.3× on the B-spline fit, because
-patternsearch's 2N poll points are independent; the first run pays a one-off
-~35 s pool startup (8 workers). Both fits are far below the manuscript's own
+Parallel is worth 1.5× (burst) to 2.3× (B-spline) to patternsearch, because its
+2N poll points are independent; the first run pays a one-off ~30 s pool startup
+(8 workers). It does not help fmincon here (53 s serial, 48 s parallel for the
+burst fit; slower for the B-spline), so the checkbox is off by default. Both fits are far below the manuscript's own
 budget (200 iterations / 400 evaluations per node, at 74 grid nodes plus an
 8-start polish).
 
-The two tabs default to *different* solvers. The gamma demo uses patternsearch
-because the manuscript does — but with the receptor-potential cost, `fmincon`
-does better on the demo's budget: cost 0.022 in 46 s (serial) against
-patternsearch's 0.115 in 86 s. The Your-data tab defaults to fmincon; on the
-built-in 8-parameter fit it reaches 0.043 against patternsearch's 0.084 on the
-same 20-iteration budget, and is slightly quicker. Both are switchable via
-`opts.solver` or the **Solver** dropdown.
+Both tabs default to fmincon. On the demo it reaches cost 0.022 against
+patternsearch's 0.115, in about half the time; on the Your-data tab's built-in
+8-parameter fit, 0.043 against 0.084 on the same 20-iteration budget. Both are
+switchable via `opts.solver` or the **Solver** dropdown.
 
 ## What this costs you
 

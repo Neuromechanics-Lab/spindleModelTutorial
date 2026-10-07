@@ -109,22 +109,21 @@ gDynOff = getOpt(opts, 'gDynOff', 60);
 
 lb = [4.5*ones(1,nBag), 4.5*ones(1,5), -cycle_period/2];
 ub = [9.0*ones(1,nBag), 9.0*ones(1,5),  cycle_period/2];
-% patternsearch polls 2N points per iteration, so it needs more iterations than
-% fmincon did. The manuscript allows 200 iterations / 400 evaluations per grid
-% node; this default is smaller so an interactive fit still finishes in a couple
-% of minutes - one of the differences listed in
-% docs/07_differences_from_manuscript.md.
+% The manuscript allows 200 iterations / 400 evaluations per grid node; this
+% default is smaller so an interactive fit still finishes in a minute or two -
+% one of the differences listed in docs/07_differences_from_manuscript.md.
 maxIter     = getOpt(opts, 'maxIter', 25);
 iterFcn     = getOpt(opts, 'iterFcn', []);
 useParallel = getOpt(opts, 'useParallel', false);  % parallel polls / differences
 if useParallel && ~hasParallelToolbox()
     useParallel = false;   % Parallel Computing Toolbox absent - run serial
 end
-% Solver. The manuscript uses PATTERNSEARCH ("derivative-free; reliable on the
-% stepped cost"), so that is the default here too. fmincon/sqp is offered for
-% comparison - on this cost it tends to stall on the weakly-identified chain
-% control points, whose gradient is small next to the bag's.
-solver = lower(getOpt(opts, 'solver', 'patternsearch'));
+% Solver. fmincon (sqp) is the DEFAULT. The manuscript uses patternsearch,
+% derivative-free, which suited its old firing-rate cost (stepped, because the
+% spike generator quantises the rate). The receptor-potential cost is smooth, and
+% on it fmincon does far better here: 25 iterations reach cost 0.022 in 46 s,
+% against patternsearch's 0.115 in 86 s. patternsearch is kept for comparison.
+solver = lower(getOpt(opts, 'solver', 'fmincon'));
 if strcmp(solver, 'patternsearch') && isempty(which('patternsearch'))
     solver = 'fmincon';   % Global Optimization Toolbox absent
 end

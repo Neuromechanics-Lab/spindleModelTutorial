@@ -73,9 +73,9 @@ classdef SpindleToolkitApp < SpindleAppBase
             % pushed "Run optimization" out of reach with no way to scroll to it.
             cgOuter = uigridlayout(cpanel, [1 1]);
             cgOuter.Padding = [4 4 4 4]; cgOuter.BackgroundColor = obj.S.card;
-            cg = uigridlayout(cgOuter, [16 2]);
+            cg = uigridlayout(cgOuter, [17 2]);
             cg.Scrollable = 'on';
-            cg.RowHeight = repmat({'fit'}, 1, 16);
+            cg.RowHeight = repmat({'fit'}, 1, 17);
             cg.ColumnWidth = {'1.3x','1x'};
             cg.BackgroundColor = obj.S.card;
 
@@ -134,17 +134,32 @@ classdef SpindleToolkitApp < SpindleAppBase
             obj.optCtrl.tEnd    = obj.addOptSpinner(cg, r, 'Sim duration (s)', 1.0, 3.0, 1.9); r = r + 1;
             obj.optCtrl.tEnd.ValueChangedFcn = @(s,e) obj.previewTrueDrive();
             obj.optCtrl.maxIter = obj.addOptSpinner(cg, r, 'Max iterations', 5, 60, 25); r = r + 1;
+            l = uilabel(cg, 'Text', 'Solver');
+            l.Layout.Row = r; l.Layout.Column = 1;
+            obj.optCtrl.solver = uidropdown(cg, ...
+                'Items', {'fmincon (default)', 'patternsearch (manuscript)'}, ...
+                'Value', 'fmincon (default)');
+            obj.optCtrl.solver.Layout.Row = r; obj.optCtrl.solver.Layout.Column = 2;
+            obj.optCtrl.solver.Tooltip = ['fmincon does far better on this smooth cost ' ...
+                '(25 iterations: cost 0.022 in 46 s, against patternsearch''s 0.115 in 86 s). ' ...
+                'patternsearch is what the manuscript uses - derivative-free - and is here ' ...
+                'for comparison.'];
+            r = r + 1;
 
-            % Parallel is worth a lot here: patternsearch polls 2N points per
-            % iteration and they run independently, taking a default fit from
-            % ~1.5 min to ~1 min on 8 cores (B-spline: ~2 min to ~1 min). On by
-            % default when the toolbox is present (the first run pays a one-off
-            % ~35 s pool startup).
+            % Parallel spreads fmincon's finite differences, or patternsearch's 2N
+            % poll points, across workers. For patternsearch it takes a fit from
+            % ~1.5 min to ~1 min on 8 cores (B-spline: ~2 min to ~1 min). It does
+            % not help fmincon here (7-11 parameters: too few differences to be
+            % worth the overhead), so it is OFF by default - the first run would
+            % otherwise pay a ~30 s pool startup for nothing.
             hasPar = ~isempty(ver('parallel')) && license('test', 'Distrib_Computing_Toolbox');
             obj.optCtrl.parallel = uicheckbox(cg, ...
-                'Text', 'Use parallel (~1.5-2x faster; first run starts a pool)', ...
-                'Value', hasPar, 'Enable', matlab.lang.OnOffSwitchState(hasPar));
-            if ~hasPar
+                'Text', 'Use parallel (helps patternsearch; first run starts a pool)', ...
+                'Value', false, 'Enable', matlab.lang.OnOffSwitchState(hasPar));
+            if hasPar
+                obj.optCtrl.parallel.Tooltip = ['~1.5-2x faster with patternsearch. No gain ' ...
+                    'with fmincon.'];
+            else
                 obj.optCtrl.parallel.Tooltip = 'Needs the Parallel Computing Toolbox.';
             end
             obj.optCtrl.parallel.Layout.Row = r; obj.optCtrl.parallel.Layout.Column = [1 2]; r = r + 1;
@@ -160,8 +175,8 @@ classdef SpindleToolkitApp < SpindleAppBase
 
             note = uilabel(cg, 'Text', ['The target is self-generated, so the true drive is ' ...
                 'known - drawn dashed on the left, and redrawn as you change these settings. ' ...
-                'A fit takes ~1 min with parallel on, ~1.5-2 min without (burst) or ~2 min ' ...
-                '(B-spline).' newline newline ...
+                'A fit takes ~1 min (burst) or ~2 min (B-spline) with the default fmincon.' ...
+                newline newline ...
                 'The cost is the manuscript''s: the receptor potential ABOVE its no-drive ' ...
                 'baseline, mean-normalized, scored between the dotted lines (gait phase 0-1.5, ' ...
                 'after one start-up cycle).' newline newline ...
@@ -376,6 +391,11 @@ classdef SpindleToolkitApp < SpindleAppBase
                 opts = obj.trueDriveOpts(ac);
                 opts.bag0        = pct2pcaB(obj.optCtrl.x0Bag.Value);
                 opts.maxIter     = round(obj.optCtrl.maxIter.Value);
+                if startsWith(obj.optCtrl.solver.Value, 'patternsearch')
+                    opts.solver = 'patternsearch';
+                else
+                    opts.solver = 'fmincon';
+                end
                 opts.useParallel = obj.optCtrl.parallel.Value;
 
                 % Prime the cost plot; live-update via iterFcn.

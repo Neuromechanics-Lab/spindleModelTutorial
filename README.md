@@ -38,10 +38,9 @@ Toolkit** window.
 
 - **MATLAB R2020a or later** (uses `uifigure` apps). Runs on macOS and Windows.
 - **Signal Processing Toolbox** — `butter`/`filtfilt`, used inside `sarc2spindle`.
-- **Optimization Toolbox** — `fmincon`, the `Your data` tab's default solver.
+- **Optimization Toolbox** — `fmincon`, the Analysis Toolkit's default solver.
 - *Optional:* **Global Optimization Toolbox** — `patternsearch`, the manuscript's
-  solver and the `Gamma optimization` tab's default. Without it that tab falls
-  back to `fmincon` automatically.
+  solver, offered on both Toolkit tabs for comparison.
 - *Optional:* **Parallel Computing Toolbox** — the "Use parallel" checkbox
   spreads `patternsearch`'s poll points across workers, 1.5–2.3× here.
 
